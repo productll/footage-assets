@@ -2,217 +2,30 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>FOOTAGE — Asset Tracker</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#0D1B35;--blue:#1D4ED8;--green:#16A34A;--red:#DC2626;--amber:#D97706;--border:#E2E8F0;--text:#0F172A;--soft:#64748B;--muted:#94A3B8;--bg:#F0F4F8;--card:#fff;--lg:#F0FDF4;--lr:#FEF2F2;--la:#FFFBEB;--lb:#EFF6FF;--lp:#F5F3FF}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);direction:rtl}
-input,select,button,textarea{font-family:inherit;direction:rtl}
-</style>
-</head>
-<body>
-<div id="root"></div>
-<script>
-// ═══════════════════════════════════════════════
-// FIREBASE
-// ═══════════════════════════════════════════════
-const FB = 'https://footage-assets-default-rtdb.asia-southeast1.firebasedatabase.app';
-
-async function fbRead(path){
-  try{
-    const r = await fetch(FB+'/'+path+'.json');
-    if(!r.ok) return null;
-    return await r.json();
-  }catch(e){return null;}
-}
-
-async function fbWrite(path, data){
-  try{
-    const r = await fetch(FB+'/'+path+'.json',{
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(data)
-    });
-    return r.ok;
-  }catch(e){return false;}
-}
-
-// ═══════════════════════════════════════════════
-// APP STATE
-// ═══════════════════════════════════════════════
-let CU = null;
-
-const DEFAULT_USERS = [
-  {id:'u1',name:'المحاسب',username:'accountant',password:'footage2026',role:'accountant',title:'محاسب'},
-  {id:'u2',name:'أحمد الوهيبي',username:'ahmed',password:'1234',role:'crew',title:'مصور'},
-  {id:'u3',name:'خالد البلوشي',username:'khalid',password:'1234',role:'crew',title:'مونتير'},
-  {id:'u4',name:'سالم الحارثي',username:'salem',password:'1234',role:'crew',title:'مصور فيديو'},
-  {id:'u5',name:'يوسف الراشدي',username:'yousuf',password:'1234',role:'crew',title:'موشن جرافيك'},
-];
-
-// Always read/write through Firebase
-async function getUsers(){
-  const r = await fbRead('users');
-  if(r && Array.isArray(r) && r.length>0) return r;
-  return DEFAULT_USERS;
-}
-
-async function saveUsers(users){
-  return await fbWrite('users', users);
-}
-
-async function getAssets(){
-  const r = await fbRead('assets');
-  if(r && Array.isArray(r) && r.length>0) return r;
-  return INIT_ASSETS;
-}
-
-async function saveAssets(assets){
-  return await fbWrite('assets', assets);
-}
-
-async function getCheckouts(){
-  const r = await fbRead('checkouts');
-  return r && Array.isArray(r) ? r : [];
-}
-
-async function saveCheckouts(cos){
-  return await fbWrite('checkouts', cos);
-}
-
-async function getLogs(){
-  const r = await fbRead('log');
-  return r && Array.isArray(r) ? r : [];
-}
-
-async function saveLogs(logs){
-  return await fbWrite('log', logs);
-}
-
-// ═══════════════════════════════════════════════
-// INIT ASSETS
-// ═══════════════════════════════════════════════
-const INIT_ASSETS=[
-  {code:'FTG-PE-CA-0001',name:'Canon EOS R5C',cat:'Cameras',cost:1942.5,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-CA-0002',name:'Sony FX3',cat:'Cameras',cost:1290,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-CA-0003',name:'Sony a7S III',cat:'Cameras',cost:1049,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-CA-0004',name:'DJI Mini 5 Pro',cat:'Cameras',cost:453,lifeH:1200,usedH:0,status:'available'},
-  {code:'FTG-PE-CA-0005',name:'GoPro Hero 11',cat:'Cameras',cost:154,lifeH:1500,usedH:0,status:'available'},
-  {code:'FTG-PE-LN-0001',name:'Canon RF 24-105mm f/4L',cat:'Lenses',cost:439,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PE-LN-0002',name:'Canon RF 70-200mm f/2.8L',cat:'Lenses',cost:1002.75,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PE-LN-0003',name:'Sigma 24-70mm f/2.8',cat:'Lenses',cost:389,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PE-LN-0004',name:'Sony FE 16-35mm GM II',cat:'Lenses',cost:749,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PE-PF-0001',name:'Godox AD600 Pro (1)',cat:'Lighting',cost:273,lifeH:1500,usedH:0,status:'available'},
-  {code:'FTG-PE-PF-0002',name:'Godox AD600 Pro (2)',cat:'Lighting',cost:273,lifeH:1500,usedH:0,status:'available'},
-  {code:'FTG-PE-VL-0001',name:'Nanlite FS-300B',cat:'Lighting',cost:110,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-VL-0002',name:'amaran COB 300c',cat:'Lighting',cost:205.2,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-LM-0001',name:'Phottix Softbox 30x140 (1)',cat:'Lighting',cost:40,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-LM-0002',name:'Phottix Softbox 30x140 (2)',cat:'Lighting',cost:40,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-LM-0003',name:'Godox XPro Trigger Canon',cat:'Lighting',cost:35,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PE-LM-0004',name:'Nanlite Barndoor PavoTube',cat:'Lighting',cost:36.8,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-LM-0005',name:'amaran Lantern 90',cat:'Lighting',cost:32.4,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-LM-0006',name:'Godox QR-P120T Softbox',cat:'Lighting',cost:42,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-LM-0007',name:'Glide Gear Butterfly Diffuser',cat:'Lighting',cost:115.1,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-LM-0008',name:'Impact Black Flag 24x36"',cat:'Lighting',cost:24.6,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-LM-0009',name:'amaran Spotlight SE 19deg',cat:'Lighting',cost:152.2,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-AD-0001',name:'Sennheiser MKE 600',cat:'Audio',cost:134.4,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-AD-0002',name:'RodeCaster Pro II',cat:'Audio',cost:238,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PE-AD-0003',name:'Rode PodMic Dynamic',cat:'Audio',cost:45,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-AD-0004',name:'Rode PodMic USB (1)',cat:'Audio',cost:79,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-AD-0005',name:'Rode PodMic USB (2)',cat:'Audio',cost:79,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-AD-0006',name:'Hollyland Lark M2 (1)',cat:'Audio',cost:48,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PE-AD-0007',name:'Hollyland Lark M2 (2)',cat:'Audio',cost:48,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PS-AS-0001',name:'Focus Boom Arm',cat:'Audio',cost:19.95,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-ST-0001',name:'DJI RS3 Pro Gimbal',cat:'Camera Support & Rigs',cost:350,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PS-ST-0002',name:'DJI RS4 Pro Gimbal',cat:'Camera Support & Rigs',cost:309,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PS-ST-0003',name:'Tilta Ring Grip + Handle',cat:'Camera Support & Rigs',cost:104.3,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PS-CS-0001',name:'ProVision Tripod Fluid Head',cat:'Camera Support & Rigs',cost:49,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-CS-0002',name:'iFootage Spider Crab Magic Arm',cat:'Camera Support & Rigs',cost:40.4,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-CS-0003',name:'Smallrig AD-01 Tripod',cat:'Camera Support & Rigs',cost:43.12,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-CS-0004',name:'Smallrig Matte Box',cat:'Camera Support & Rigs',cost:142,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-CS-0005',name:'Electric Background System',cat:'Camera Support & Rigs',cost:84,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-CS-0006',name:'Paper Background',cat:'Camera Support & Rigs',cost:53,lifeH:500,usedH:0,status:'available'},
-  {code:'FTG-PS-CS-0007',name:'Autocue Teleprompter',cat:'Camera Support & Rigs',cost:80,lifeH:2000,usedH:0,status:'available'},
-  {code:'FTG-PS-MR-0001',name:'Smallrig Cage R5C',cat:'Camera Support & Rigs',cost:30,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-MR-0002',name:'Tilta Full Cage FX3',cat:'Camera Support & Rigs',cost:68.14,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-MR-0003',name:'Tilta V-Mount Battery Plate',cat:'Camera Support & Rigs',cost:51.5,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PS-MR-0004',name:'Smallrig V-Mount Plate',cat:'Camera Support & Rigs',cost:31,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PS-MR-0005',name:'Smallrig Arri Handle',cat:'Camera Support & Rigs',cost:27.5,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PS-LS-0001',name:'Caisi C-Stand + Boom Arm',cat:'Camera Support & Rigs',cost:61,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PS-LS-0002',name:'Phottix Boom Stand W400',cat:'Camera Support & Rigs',cost:99,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PE-FG-0001',name:'Atomos Ninja V 4K Monitor',cat:'Monitors & Screens',cost:160,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PE-FG-0002',name:'Hollyland Mars 4K TX',cat:'Monitors & Screens',cost:250,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-PB-0001',name:'Canon LP-E6 Battery x3',cat:'Power & Batteries',cost:154.35,lifeH:1000,usedH:0,status:'available'},
-  {code:'FTG-PS-PB-0002',name:'Smallrig V-Mount VB99',cat:'Power & Batteries',cost:99,lifeH:1500,usedH:0,status:'available'},
-  {code:'FTG-PS-PB-0003',name:'Smallrig Pro V-Mount VB99',cat:'Power & Batteries',cost:129.2,lifeH:1500,usedH:0,status:'available'},
-  {code:'FTG-PS-PB-0004',name:'Sony NP-FZ100 Battery',cat:'Power & Batteries',cost:139.5,lifeH:1000,usedH:0,status:'available'},
-  {code:'FTG-PS-PB-0005',name:'Sony BC-QZ1 Charger',cat:'Power & Batteries',cost:192.5,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PS-PB-0006',name:'Canon LC-E6 Charger',cat:'Power & Batteries',cost:80,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-TS-BB-0001',name:'ProVision Rolling Backpack',cat:'Transport & Cases',cost:68.25,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-TS-BB-0002',name:'Light Stand Hard Case',cat:'Transport & Cases',cost:41,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PP-EC-0001',name:'MacBook Pro M4 Max 14"',cat:'Computers & Editing',cost:1310,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-EC-0002',name:'MacBook Pro M2 Pro',cat:'Computers & Editing',cost:850,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-EC-0003',name:'MacBook Pro M3 Max',cat:'Computers & Editing',cost:1700,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-EC-0004',name:'MacBook Pro M3 Pro',cat:'Computers & Editing',cost:495,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-EC-0005',name:'DaVinci Resolve Studio Panel',cat:'Computers & Editing',cost:130,lifeH:6000,usedH:0,status:'available'},
-  {code:'FTG-PP-LT-0001',name:'PC R7 32 Desktop',cat:'Computers & Editing',cost:800,lifeH:6000,usedH:0,status:'available'},
-  {code:'FTG-PP-LT-0002',name:'MacBook Air M1',cat:'Computers & Editing',cost:350,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-LT-0003',name:'MacBook Pro i7 2017',cat:'Computers & Editing',cost:250,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-LT-0004',name:'MacBook Pro i7 2018',cat:'Computers & Editing',cost:300,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0001',name:'Xiaomi Mi 32" QHD (1)',cat:'Monitors & Screens',cost:140,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0002',name:'Xiaomi Mi 32" QHD (2)',cat:'Monitors & Screens',cost:140,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0003',name:'Xiaomi P24 1080p (1)',cat:'Monitors & Screens',cost:35,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0004',name:'Xiaomi P24 1080p (2)',cat:'Monitors & Screens',cost:35,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0005',name:'Xiaomi P24 1080p (3)',cat:'Monitors & Screens',cost:35,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0006',name:'Xiaomi P24 1080p (4)',cat:'Monitors & Screens',cost:35,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0007',name:'LG 27MP400 1080p',cat:'Monitors & Screens',cost:64,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0008',name:'Xiaomi Mi 30" (1)',cat:'Monitors & Screens',cost:91,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0009',name:'Xiaomi Mi 30" (2)',cat:'Monitors & Screens',cost:91,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SC-0010',name:'AOC 1080p 120Hz',cat:'Monitors & Screens',cost:32,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0001',name:'Lexar CFexpress/SD Reader',cat:'Storage & Memory',cost:160,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0002',name:'Sony 480GB CFexpress A',cat:'Storage & Memory',cost:151,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0003',name:'Sony 240GB CFexpress A',cat:'Storage & Memory',cost:94.35,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0004',name:'SanDisk SSD 1TB',cat:'Storage & Memory',cost:33.9,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0005',name:'SanDisk SSD 2TB (1)',cat:'Storage & Memory',cost:58,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0006',name:'SanDisk SSD 2TB (2)',cat:'Storage & Memory',cost:58,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0007',name:'Extreme SSD 2TB',cat:'Storage & Memory',cost:52,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0008',name:'Lexar 1667X 256GB',cat:'Storage & Memory',cost:60,lifeH:3000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0009',name:'Angelbird 512GB CFexpress B',cat:'Storage & Memory',cost:80,lifeH:4000,usedH:0,status:'available'},
-  {code:'FTG-PP-SM-0010',name:'SanDisk PRO CFexpress B Reader',cat:'Storage & Memory',cost:135,lifeH:5000,usedH:0,status:'available'},
-  {code:'FTG-OF-ED-0001',name:'Nikai 86" 4K TV',cat:'Office Electronics',cost:450,lifeH:9999,usedH:0,status:'available'},
-  {code:'FTG-OF-ED-0002',name:'Brother Printer MFC-L375',cat:'Office Electronics',cost:140,lifeH:9999,usedH:0,status:'available'},
-  {code:'FTG-OF-ED-0003',name:'Table Refrigerator',cat:'Office Electronics',cost:250,lifeH:9999,usedH:0,status:'available'},
-  {code:'FTG-OF-ED-0004',name:'Air Purifier',cat:'Office Electronics',cost:72,lifeH:9999,usedH:0,status:'available'},
-  {code:'FTG-OF-ED-0005',name:'Asustor NAS 40T',cat:'Office Electronics',cost:800,lifeH:9999,usedH:0,status:'available'},
-];
-
-// Helper
-const depR = a => a.lifeH>0&&a.lifeH<9999 ? a.cost/a.lifeH : 0;
-const now = () => new Date().toISOString().slice(0,16);
-const fmt = s => {if(!s)return'—';const d=new Date(s);return d.toLocaleDateString('ar-OM',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});};
-const isLate = e => e && new Date(e) < new Date();
-
-const FIELD_CATS = ['Cameras','Lenses','Lighting','Audio','Camera Support & Rigs','Computers & Editing','Storage & Memory','Monitors & Screens','Power & Batteries','Transport & Cases'];
-const ALL_CATS = [...FIELD_CATS,'Office Electronics','Other'];
-const CAT_AR = {'Cameras':'كاميرات','Lenses':'عدسات','Lighting':'إضاءة','Audio':'صوتيات','Camera Support & Rigs':'حوامل وريج','Computers & Editing':'حواسيب','Storage & Memory':'تخزين','Monitors & Screens':'شاشات','Power & Batteries':'بطاريات','Transport & Cases':'حقائب','Office Electronics':'إلكترونيات مكتبية','Other':'أخرى'};
-
-// ═══════════════════════════════════════════════
-// RENDER APP
-// ═══════════════════════════════════════════════
-document.getElementById('root').innerHTML = `
-<style>
-.topbar{background:var(--navy);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--navy:#0D1B35;--blue:#1D4ED8;--green:#16A34A;--amber:#D97706;--red:#DC2626;--purple:#7C3AED;--soft:#64748B;--muted:#94A3B8;--border:#E2E8F0;--text:#0F172A;--bg:#F0F4F8;--card:#fff;--lg:#F0FDF4;--lr:#FEF2F2;--la:#FFFBEB;--lb:#EFF6FF;--lp:#F5F3FF}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--text);direction:rtl}
+input,select,textarea,button{font-family:inherit;direction:rtl}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.topbar{background:var(--navy);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
 .tb-logo{color:white;font-weight:800;font-size:15px;letter-spacing:2px}
 .tb-right{display:flex;align-items:center;gap:8px}
-.tb-av{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:700}
-.tb-name{color:rgba(255,255,255,.85);font-size:13px}
-.tb-sync{width:8px;height:8px;border-radius:50%;background:#94A3B8;transition:.3s}
-.logout-btn{color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;padding:4px 8px;border:none;background:transparent}
+.tb-sync{width:8px;height:8px;border-radius:50%;background:#94A3B8;transition:.3s;flex-shrink:0}
+.tb-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;overflow:hidden;border:2px solid rgba(255,255,255,.25);flex-shrink:0}
+.tb-av img{width:100%;height:100%;object-fit:cover}
+.tb-info{display:none}
+@media(min-width:480px){.tb-info{display:block}}
+.tb-name{color:rgba(255,255,255,.9);font-size:13px;font-weight:600}
+.tb-role{font-size:10px;color:rgba(255,255,255,.4);background:rgba(255,255,255,.1);padding:1px 7px;border-radius:8px;display:inline-block}
+.logout-btn{color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;padding:5px 10px;border:none;background:transparent}
 /* LOGIN */
 #login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0D1B35,#1e3a6e)}
-.lb{background:white;border-radius:20px;padding:36px 28px;width:340px;max-width:92vw;text-align:center}
-.lb-logo{font-size:22px;font-weight:800;letter-spacing:4px;color:var(--navy);margin-bottom:4px}
+.lb{background:white;border-radius:20px;padding:36px 28px;width:340px;max-width:92vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.lb-logo{font-size:22px;font-weight:800;letter-spacing:4px;color:var(--navy);margin-bottom:2px}
 .lb-sub{font-size:12px;color:var(--muted);margin-bottom:24px}
 .lb-err{background:var(--lr);color:var(--red);padding:9px;border-radius:8px;font-size:13px;margin-bottom:10px;display:none;text-align:right}
 .lf{margin-bottom:12px;text-align:right}
@@ -221,7 +34,6 @@ document.getElementById('root').innerHTML = `
 .lf input:focus{outline:none;border-color:var(--navy)}
 .lb-btn{width:100%;padding:13px;border:none;border-radius:12px;background:var(--navy);color:white;font-size:16px;font-weight:700;cursor:pointer;margin-top:4px}
 .lb-btn:disabled{opacity:.6;cursor:not-allowed}
-/* FORGOT */
 .forgot-link{font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline;margin-top:12px;display:block}
 .reset-box{display:none;margin-top:12px;background:var(--lb);border-radius:10px;padding:14px;text-align:right}
 .reset-box input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;margin-bottom:8px}
@@ -231,9 +43,11 @@ document.getElementById('root').innerHTML = `
 .crew-body{padding:14px;max-width:520px;margin:0 auto}
 .ccard{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:16px;margin-bottom:12px}
 .ctitle{font-size:12px;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
-.ba{width:100%;padding:15px;border-radius:12px;border:none;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:9px}
+.ba{width:100%;padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px}
 .ba-take{background:var(--navy);color:white}
 .ba-ret{background:var(--lg);color:var(--green);border:2px solid var(--green)}
+.ba-note{background:var(--la);color:var(--amber);border:2px solid var(--amber)}
+.ba-suggest{background:var(--lp);color:var(--purple);border:2px solid var(--purple)}
 .ba-hist{background:var(--lb);color:var(--blue);border:2px solid var(--blue)}
 .cscr{display:none}.cscr.act{display:block}
 .cscr-hdr{background:var(--navy);padding:12px 14px}
@@ -241,8 +55,9 @@ document.getElementById('root').innerHTML = `
 .cscr-title{color:white;font-size:17px;font-weight:700}
 .cf{margin-bottom:12px}
 .cf label{font-size:12px;font-weight:700;color:var(--soft);display:block;margin-bottom:4px}
-.cf input,.cf select{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;color:var(--text);background:white}
-.cf input:focus,.cf select:focus{outline:none;border-color:var(--navy)}
+.cf input,.cf select,.cf textarea{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;color:var(--text);background:white}
+.cf textarea{resize:vertical;min-height:80px}
+.cf input:focus,.cf select:focus,.cf textarea:focus{outline:none;border-color:var(--navy)}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cat-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .cpill{padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:white;font-size:12px;font-weight:700;cursor:pointer;color:var(--soft)}
@@ -268,15 +83,16 @@ document.getElementById('root').innerHTML = `
 .ri-row:last-of-type{border:none}
 .late-pill{background:var(--la);color:var(--amber);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
 .hrs-i{width:72px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;text-align:center}
+.img-preview{width:100%;max-height:180px;object-fit:contain;border-radius:10px;border:1px solid var(--border);margin-top:8px}
 /* ACC */
 #acc-wrap{display:none;grid-template-columns:220px 1fr;min-height:calc(100vh - 44px)}
 @media(max-width:700px){#acc-wrap{grid-template-columns:1fr}.sidebar{display:none}}
-.sidebar{background:var(--navy);padding:16px 0}
+.sidebar{background:var(--navy);padding:16px 0;overflow-y:auto}
 .sbg{padding:0 10px;margin-bottom:20px}
 .sblbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:2px;text-transform:uppercase;padding:0 8px;margin-bottom:6px}
 .sbtn{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;font-weight:500;margin-bottom:2px;border:none;background:transparent;width:100%;text-align:right}
 .sbtn:hover,.sbtn.act{background:rgba(255,255,255,.12);color:white}
-.sbicon{font-size:14px}
+.sbicon{font-size:14px;flex-shrink:0}
 .acc-main{padding:22px;overflow-y:auto;max-height:calc(100vh - 44px)}
 .apg{display:none}.apg.act{display:block}
 .pgtitle{font-size:19px;font-weight:700;margin-bottom:16px}
@@ -294,11 +110,9 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#FAFBFC}
 .badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700}
-.b-out{background:var(--lr);color:var(--red)}
-.b-in{background:var(--lg);color:var(--green)}
-.b-late{background:var(--la);color:var(--amber)}
-.b-cat{background:var(--lb);color:var(--blue)}
-.b-adm{background:var(--lp);color:#7C3AED}
+.b-out{background:var(--lr);color:var(--red)}.b-in{background:var(--lg);color:var(--green)}
+.b-late{background:var(--la);color:var(--amber)}.b-cat{background:var(--lb);color:var(--blue)}
+.b-adm{background:var(--lp);color:#7C3AED}.b-new{background:#FEF3C7;color:#92400E}
 .prog{height:6px;background:var(--border);border-radius:3px;overflow:hidden;width:80px;display:inline-block;vertical-align:middle}
 .progf{height:100%;border-radius:3px}
 .frow{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
@@ -316,32 +130,40 @@ tr:hover td{background:#FAFBFC}
 .fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
 .ff label{font-size:11px;font-weight:700;color:var(--soft);display:block;margin-bottom:4px}
-.ff input,.ff select{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text)}
+.ff input,.ff select,.ff textarea{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text)}
 .actbtn{padding:8px 14px;border-radius:8px;background:var(--navy);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer}
 .actbtn.out{background:white;color:var(--text);border:1px solid var(--border)}
 .ucard{background:white;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
-.uav{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.uav{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;overflow:hidden}
+.uav img{width:100%;height:100%;object-fit:cover}
 .empty{text-align:center;padding:32px;color:var(--muted);font-size:13px}
 .loading{text-align:center;padding:20px;color:var(--muted);font-size:13px}
+.note-card{background:white;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;border-right:4px solid var(--amber)}
+.note-card.unread{border-right-color:var(--red);background:var(--lr)}
+.suggest-card{background:white;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;border-right:4px solid var(--purple)}
+.suggest-img{width:100%;max-height:200px;object-fit:contain;border-radius:8px;margin-top:8px;border:1px solid var(--border)}
 </style>
+</head>
+<body>
 
-<!-- TOPBAR -->
 <div class="topbar" id="topbar" style="display:none">
   <div class="tb-logo">FOOTAGE</div>
   <div class="tb-right">
-    <div class="tb-sync" id="sync-dot" title="حالة المزامنة"></div>
+    <div class="tb-sync" id="sync-dot"></div>
     <div class="tb-av" id="tb-av"></div>
-    <div class="tb-name" id="tb-name"></div>
+    <div class="tb-info">
+      <div class="tb-name" id="tb-name"></div>
+      <span class="tb-role" id="tb-role"></span>
+    </div>
     <button class="logout-btn" onclick="doLogout()">خروج</button>
   </div>
 </div>
 
-<!-- LOGIN -->
 <div id="login-wrap">
   <div class="lb">
     <div class="lb-logo">FOOTAGE</div>
     <div class="lb-sub">نظام تتبع الأصول والمعدات</div>
-    <div id="lb-err" class="lb-err">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+    <div id="lb-err" class="lb-err"></div>
     <div class="lf"><label>اسم المستخدم</label><input type="text" id="l-user" placeholder="username" autocomplete="off"></div>
     <div class="lf"><label>كلمة المرور</label><input type="password" id="l-pass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <button class="lb-btn" id="login-btn" onclick="doLogin()">دخول</button>
@@ -364,20 +186,32 @@ tr:hover td{background:#FAFBFC}
     <div class="crew-body">
       <div id="cm-alert"></div>
       <div class="ccard">
-        <div class="ctitle">ماذا تريد؟</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div id="crew-av-main" style="width:56px;height:56px;border-radius:50%;background:var(--lb);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:var(--blue);overflow:hidden;flex-shrink:0;border:2px solid var(--border)"></div>
+          <div>
+            <div id="crew-name" style="font-size:17px;font-weight:700;color:var(--text)"></div>
+            <div id="crew-title" style="font-size:13px;color:var(--soft);margin-top:2px"></div>
+          </div>
+        </div>
         <button class="ba ba-take" onclick="goCrew('cs-take')"><span style="font-size:20px">📦</span> أخذت معدات</button>
         <button class="ba ba-ret" onclick="goCrew('cs-return')"><span style="font-size:20px">✅</span> رجّعت معدات</button>
+        <button class="ba ba-note" onclick="goCrew('cs-note')"><span style="font-size:20px">📝</span> ملاحظة على معدة</button>
+        <button class="ba ba-suggest" onclick="goCrew('cs-suggest')"><span style="font-size:20px">💡</span> اقتراح شراء معدة</button>
         <button class="ba ba-hist" onclick="goCrew('cs-hist')"><span style="font-size:20px">📋</span> سجل استخدامي</button>
       </div>
-      <div class="ccard"><div class="ctitle">معداتي الخارجة الآن</div><div id="my-active"><div class="loading">جاري التحميل...</div></div></div>
+      <div class="ccard">
+        <div class="ctitle">معداتي الخارجة الآن</div>
+        <div id="my-active"><div class="loading">جاري التحميل...</div></div>
+      </div>
     </div>
   </div>
+
   <div id="cs-take" class="cscr">
     <div class="cscr-hdr"><button class="cback" onclick="goCrew('cs-main')">← رجوع</button><div class="cscr-title">تسجيل أخذ معدات</div></div>
     <div class="crew-body">
       <div id="take-alert"></div>
       <div class="ccard">
-        <div class="cf"><label>المشروع / الحدث</label><input type="text" id="t-proj" placeholder="FTG-EVT-0326-07 — تغطية الواحة"></div>
+        <div class="cf"><label>المشروع / الحدث</label><input type="text" id="t-proj" placeholder="FTG-EVT-0326-07 — اسم المشروع"></div>
         <div class="g2">
           <div class="cf"><label>تاريخ الأخذ</label><input type="datetime-local" id="t-out"></div>
           <div class="cf"><label>الإرجاع المتوقع</label><input type="datetime-local" id="t-exp"></div>
@@ -387,17 +221,68 @@ tr:hover td{background:#FAFBFC}
       <div class="ccard">
         <div class="ctitle">اختر الفئة ثم المعدات</div>
         <div class="cat-pills" id="take-cats"></div>
-        <div id="take-list"><div class="loading">جاري تحميل الأصول...</div></div>
+        <div id="take-list"><div class="loading">جاري تحميل المعدات...</div></div>
       </div>
-      <div class="crew-body" style="padding:0 14px 16px">
-        <button class="csub" id="take-btn" onclick="doTake()">تسجيل الخروج</button>
-      </div>
+      <div style="padding:0 14px 20px"><button class="csub" id="take-btn" onclick="doTake()">تسجيل الخروج</button></div>
     </div>
   </div>
+
   <div id="cs-return" class="cscr">
     <div class="cscr-hdr"><button class="cback" onclick="goCrew('cs-main')">← رجوع</button><div class="cscr-title">تسجيل إرجاع</div></div>
     <div class="crew-body"><div id="ret-alert"></div><div id="ret-list"><div class="loading">جاري التحميل...</div></div></div>
   </div>
+
+  <div id="cs-note" class="cscr">
+    <div class="cscr-hdr"><button class="cback" onclick="goCrew('cs-main')">← رجوع</button><div class="cscr-title">ملاحظة على معدة</div></div>
+    <div class="crew-body">
+      <div id="note-alert"></div>
+      <div class="ccard">
+        <div class="cf"><label>المعدة (اختياري — اتركه فارغاً لملاحظة عامة)</label>
+          <select id="note-asset"><option value="">ملاحظة عامة</option></select>
+        </div>
+        <div class="cf"><label>نوع الملاحظة</label>
+          <select id="note-type">
+            <option value="general">عامة</option>
+            <option value="damage">تلف أو عطل</option>
+            <option value="missing">قطعة مفقودة</option>
+            <option value="maintenance">تحتاج صيانة</option>
+            <option value="other">أخرى</option>
+          </select>
+        </div>
+        <div class="cf"><label>الملاحظة</label>
+          <textarea id="note-text" placeholder="اكتب ملاحظتك هنا بالتفصيل..."></textarea>
+        </div>
+        <button class="csub" onclick="doSubmitNote()">إرسال الملاحظة</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cs-suggest" class="cscr">
+    <div class="cscr-hdr"><button class="cback" onclick="goCrew('cs-main')">← رجوع</button><div class="cscr-title">اقتراح شراء معدة</div></div>
+    <div class="crew-body">
+      <div id="suggest-alert"></div>
+      <div class="ccard">
+        <div class="cf"><label>اسم المعدة المقترحة</label><input type="text" id="sg-name" placeholder="مثال: DJI RS4 Pro Gimbal"></div>
+        <div class="cf"><label>الفئة</label>
+          <select id="sg-cat">
+            <option>Cameras</option><option>Lenses</option><option>Lighting</option>
+            <option>Audio</option><option>Camera Support & Rigs</option>
+            <option>Computers & Editing</option><option>Storage & Memory</option>
+            <option>Power & Batteries</option><option>Other</option>
+          </select>
+        </div>
+        <div class="cf"><label>الغرض من الشراء</label><textarea id="sg-purpose" placeholder="لماذا نحتاج هذه المعدة؟"></textarea></div>
+        <div class="cf"><label>القيمة المضافة</label><textarea id="sg-value" placeholder="كيف ستساعد في العمل؟"></textarea></div>
+        <div class="cf"><label>السعر التقريبي (ريال)</label><input type="number" id="sg-price" placeholder="0"></div>
+        <div class="cf"><label>صورة المعدة (اختياري)</label>
+          <input type="file" id="sg-img" accept="image/*" onchange="previewSuggestImg(this)">
+          <img id="sg-img-preview" style="display:none;width:100%;max-height:160px;object-fit:contain;border-radius:10px;border:1px solid var(--border);margin-top:8px">
+        </div>
+        <button class="csub" onclick="doSubmitSuggest()">إرسال الاقتراح</button>
+      </div>
+    </div>
+  </div>
+
   <div id="cs-hist" class="cscr">
     <div class="cscr-hdr"><button class="cback" onclick="goCrew('cs-main')">← رجوع</button><div class="cscr-title">سجل استخدامي</div></div>
     <div class="crew-body">
@@ -418,11 +303,16 @@ tr:hover td{background:#FAFBFC}
       <button class="sbtn" onclick="showPage(this,'ap-active')"><span class="sbicon">📤</span> الخارجة الآن</button>
     </div>
     <div class="sbg">
+      <div class="sblbl">الوارد</div>
+      <button class="sbtn" onclick="showPage(this,'ap-notes')"><span class="sbicon">📝</span> الملاحظات <span id="notes-badge" style="background:#DC2626;color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-right:4px;display:none">0</span></button>
+      <button class="sbtn" onclick="showPage(this,'ap-suggests')"><span class="sbicon">💡</span> اقتراحات الشراء <span id="suggest-badge" style="background:#7C3AED;color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-right:4px;display:none">0</span></button>
+    </div>
+    <div class="sbg">
       <div class="sblbl">التقارير</div>
       <button class="sbtn" onclick="showPage(this,'ap-log')"><span class="sbicon">📋</span> السجل الكامل</button>
       <button class="sbtn" onclick="showPage(this,'ap-depr')"><span class="sbicon">📉</span> الاستهلاك</button>
-      <button class="sbtn" onclick="showPage(this,'ap-prod')"><span class="sbicon">👤</span> إنتاجية الفريق</button>
       <button class="sbtn" onclick="showPage(this,'ap-monthly')"><span class="sbicon">📅</span> التقرير الشهري</button>
+      <button class="sbtn" onclick="showPage(this,'ap-prod')"><span class="sbicon">👤</span> إنتاجية الفريق</button>
     </div>
     <div class="sbg">
       <div class="sblbl">الإدارة</div>
@@ -431,6 +321,7 @@ tr:hover td{background:#FAFBFC}
       <button class="sbtn" onclick="showPage(this,'ap-data')"><span class="sbicon">🗑</span> إدارة البيانات</button>
     </div>
   </div>
+
   <div class="acc-main">
     <div id="ap-dash" class="apg act">
       <div class="pgtitle">لوحة التحكم</div>
@@ -443,39 +334,92 @@ tr:hover td{background:#FAFBFC}
       <div id="dash-late"></div>
       <div class="g2r">
         <div class="acard"><div class="atitle">الخارجة الآن</div><div id="d-snap"><div class="loading">جاري التحميل...</div></div></div>
-        <div class="acard"><div class="atitle">أكثر الأصول استخداماً</div><div id="d-top"></div></div>
+        <div class="acard"><div class="atitle">أكثر الأصول استخداماً (الشهر)</div><div id="d-top"></div></div>
       </div>
       <div class="g2r">
         <div class="acard"><div class="atitle">آخر 5 عمليات إرجاع</div><div id="d-recent"></div></div>
-        <div class="acard"><div class="atitle">إنتاجية الفريق (الشهر)</div><div id="d-prod"></div></div>
+        <div class="acard"><div class="atitle">إنتاجية الفريق (الشهر)</div><div id="d-prod-dash"></div></div>
       </div>
     </div>
+
     <div id="ap-active" class="apg">
       <div class="pgtitle">الأصول الخارجة حالياً</div>
       <div class="acard tbl-wrap"><table><thead><tr><th>الأصل</th><th>الفئة</th><th>المستخدم</th><th>المشروع</th><th>الخروج</th><th>الإرجاع المتوقع</th><th>الحالة</th></tr></thead><tbody id="active-tbl"></tbody></table></div>
     </div>
+
+    <div id="ap-notes" class="apg">
+      <div class="pgtitle">ملاحظات الفريق</div>
+      <div class="frow">
+        <select id="note-filter-type" onchange="renderAcc()"><option value="">كل الأنواع</option><option value="damage">تلف</option><option value="missing">مفقود</option><option value="maintenance">صيانة</option><option value="general">عامة</option></select>
+        <button class="ebtn" onclick="markAllNotesRead()">تحديد كل كمقروء</button>
+      </div>
+      <div id="notes-list"><div class="empty">لا توجد ملاحظات</div></div>
+    </div>
+
+    <div id="ap-suggests" class="apg">
+      <div class="pgtitle">اقتراحات الشراء</div>
+      <div id="suggests-list"><div class="empty">لا توجد اقتراحات</div></div>
+    </div>
+
     <div id="ap-log" class="apg">
       <div class="pgtitle">السجل الكامل</div>
       <div class="frow">
-        <input type="text" id="lq" placeholder="بحث..." oninput="renderDash()" style="flex:1;max-width:200px">
-        <select id="lu2" onchange="renderDash()"><option value="">كل المستخدمين</option></select>
-        <select id="lcat" onchange="renderDash()"><option value="">كل الفئات</option></select>
-        <input type="month" id="lmon" onchange="renderDash()">
+        <input type="text" id="lq" placeholder="بحث..." oninput="renderAcc()" style="flex:1;max-width:200px">
+        <select id="lu2" onchange="renderAcc()"><option value="">كل المستخدمين</option></select>
+        <select id="lcat" onchange="renderAcc()"><option value="">كل الفئات</option></select>
+        <input type="month" id="lmon" onchange="renderAcc()">
         <button class="ebtn" onclick="exportCSV()">CSV ↓</button>
       </div>
       <div class="acard tbl-wrap"><table><thead><tr><th>الأصل</th><th>الفئة</th><th>المستخدم</th><th>المشروع</th><th>الخروج</th><th>الإرجاع</th><th>ساعات</th><th>استهلاك ر</th></tr></thead><tbody id="log-tbl"></tbody></table></div>
     </div>
+
     <div id="ap-depr" class="apg">
       <div class="pgtitle">تقرير الاستهلاك</div>
+      <div style="background:var(--la);border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--amber)">الاستهلاك الشهري الثابت (خطي)</div>
+          <div style="font-size:11px;color:var(--soft);margin-top:2px">بناءً على التكلفة × معدل الاستهلاك ÷ 12</div>
+        </div>
+        <div style="text-align:left">
+          <div style="font-size:22px;font-weight:700;color:var(--amber)" id="fixed-monthly-dep">427.64</div>
+          <div style="font-size:11px;color:var(--soft)">ريال / شهر</div>
+        </div>
+      </div>
       <div class="g2r" style="margin-bottom:14px">
-        <div class="acard"><div class="atitle">استهلاك تراكمي — أعلى الأصول</div><div id="dep-bars"></div></div>
-        <div class="acard"><div class="atitle">استهلاك حسب الفئة</div><div id="dep-cat-bars"></div></div>
+        <div class="acard"><div class="atitle">استهلاك شهري حسب الفئة</div><div id="dep-cat-bars"></div></div>
+        <div class="acard"><div class="atitle">استهلاك تراكمي — أعلى الأصول (من الاستخدام)</div><div id="dep-usage-bars"></div></div>
       </div>
       <div class="acard tbl-wrap">
-        <div class="atitle">جدول الاستهلاك التفصيلي</div>
-        <table><thead><tr><th>الأصل</th><th>الفئة</th><th>التكلفة</th><th>ساعات مستخدمة</th><th>% استهلاك</th><th>قيمة الاستهلاك</th><th>القيمة المتبقية</th></tr></thead><tbody id="dep-tbl"></tbody></table>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="atitle" style="margin:0">جدول الاستهلاك التفصيلي</div>
+          <select id="dep-fcat" onchange="renderAcc()" style="padding:6px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px"><option value="">كل الفئات</option></select>
+        </div>
+        <table><thead><tr><th>الأصل</th><th>الفئة</th><th>التكلفة</th><th>معدل</th><th>استهلاك سنوي</th><th>استهلاك شهري</th><th>ساعات مستخدمة</th><th>% استهلاك فعلي</th><th>القيمة المتبقية</th></tr></thead><tbody id="dep-tbl"></tbody></table>
       </div>
     </div>
+
+    <div id="ap-monthly" class="apg">
+      <div class="pgtitle">التقرير الشهري</div>
+      <div class="frow">
+        <select id="mr-month" onchange="renderAcc()"><option value="">اختر الشهر</option></select>
+        <button class="ebtn" onclick="exportMonthly()">CSV ↓</button>
+      </div>
+      <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+        <div class="scard"><div class="snum" id="mr-fixed" style="color:var(--amber)">427.64</div><div class="slbl">استهلاك شهري ثابت (ر)</div></div>
+        <div class="scard"><div class="snum" id="mr-usage">0</div><div class="slbl">استهلاك من الاستخدام (ر)</div></div>
+        <div class="scard"><div class="snum" id="mr-ops">0</div><div class="slbl">عدد العمليات</div></div>
+      </div>
+      <div class="acard" style="background:var(--lb);border-color:#BFDBFE;margin-bottom:14px">
+        <div style="font-size:13px;color:var(--blue);font-weight:700;margin-bottom:6px">📌 القيد المحاسبي الشهري</div>
+        <div style="font-size:12px;color:var(--soft);font-family:monospace">مدين 69XXX استهلاك &nbsp;/&nbsp; دائن 11XXX استهلاك متراكم</div>
+        <div style="font-size:12px;color:var(--soft);margin-top:4px">المبلغ = <span id="mr-entry-amount" style="font-weight:700;color:var(--amber)">427.64</span> ريال (الاستهلاك الشهري الثابت)</div>
+      </div>
+      <div class="acard tbl-wrap">
+        <div class="atitle">تفاصيل الاستهلاك الشهري لكل أصل</div>
+        <table><thead><tr><th>الأصل</th><th>الفئة</th><th>التكلفة</th><th>معدل</th><th>استهلاك الشهر ر</th><th>استهلاك تراكمي ر</th><th>القيمة المتبقية</th></tr></thead><tbody id="mr-tbl"></tbody></table>
+      </div>
+    </div>
+
     <div id="ap-prod" class="apg">
       <div class="pgtitle">إنتاجية الفريق</div>
       <div class="g2r" style="margin-bottom:14px">
@@ -484,33 +428,14 @@ tr:hover td{background:#FAFBFC}
       </div>
       <div class="acard tbl-wrap"><table><thead><tr><th>الموظف</th><th>المسمى</th><th>المشاريع</th><th>الساعات</th><th>آخر استخدام</th><th>الأصل الأكثر</th><th>استهلاك مسبَّب</th></tr></thead><tbody id="prod-tbl"></tbody></table></div>
     </div>
-    <div id="ap-monthly" class="apg">
-      <div class="pgtitle">التقرير الشهري</div>
-      <div class="frow">
-        <select id="mr-month" onchange="renderDash()"><option value="">اختر الشهر</option></select>
-        <button class="ebtn" onclick="exportMonthly()">CSV ↓</button>
-      </div>
-      <div class="stats" style="grid-template-columns:repeat(3,1fr)">
-        <div class="scard"><div class="snum" id="mr-dep" style="color:var(--amber)">0</div><div class="slbl">استهلاك الشهر ر</div></div>
-        <div class="scard"><div class="snum" id="mr-hrs">0</div><div class="slbl">ساعات الشهر</div></div>
-        <div class="scard"><div class="snum" id="mr-ops">0</div><div class="slbl">عدد العمليات</div></div>
-      </div>
-      <div class="acard tbl-wrap">
-        <table><thead><tr><th>الأصل</th><th>الفئة</th><th>التكلفة</th><th>ساعات الشهر</th><th>استهلاك الشهر ر</th><th>الاستهلاك التراكمي</th><th>القيمة المتبقية</th></tr></thead><tbody id="mr-tbl"></tbody></table>
-      </div>
-      <div class="acard" style="background:var(--lb);border-color:#BFDBFE;margin-top:14px">
-        <div style="font-size:13px;color:#1D4ED8;font-weight:600;margin-bottom:6px">📌 القيد المحاسبي الشهري</div>
-        <div style="font-size:12px;color:var(--soft);font-family:monospace">مدين 69XXX استهلاك / دائن 11XXX استهلاك متراكم</div>
-        <div style="font-size:12px;color:var(--soft);margin-top:4px">المبلغ = إجمالي عمود "استهلاك الشهر" من الجدول أعلاه</div>
-      </div>
-    </div>
+
     <div id="ap-assets" class="apg">
       <div class="pgtitle">إدارة الأصول</div>
       <div class="acard">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <span style="font-size:13px;color:var(--soft)" id="asset-count-lbl"></span>
           <div style="display:flex;gap:8px;align-items:center">
-            <select id="af-cat" onchange="renderDash()" style="padding:6px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px"><option value="">كل الفئات</option></select>
+            <select id="af-cat" onchange="renderAcc()" style="padding:6px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px"><option value="">كل الفئات</option></select>
             <button class="actbtn" onclick="toggleAddAsset()">+ إضافة أصل</button>
           </div>
         </div>
@@ -520,16 +445,17 @@ tr:hover td{background:#FAFBFC}
             <div class="ff"><label>الاسم</label><input type="text" id="na-name" placeholder="اسم الأصل"></div>
           </div>
           <div class="fg3">
-            <div class="ff"><label>الفئة</label><select id="na-cat"><option>Cameras</option><option>Lenses</option><option>Lighting</option><option>Audio</option><option>Camera Support & Rigs</option><option>Computers & Editing</option><option>Storage & Memory</option><option>Monitors & Screens</option><option>Power & Batteries</option><option>Transport & Cases</option><option>Office Electronics</option><option>Other</option></select></div>
+            <div class="ff"><label>الفئة</label><select id="na-cat"><option>Cameras</option><option>Lenses</option><option>Lighting</option><option>Audio</option><option>Camera Support & Rigs</option><option>Computers & Editing</option><option>Storage & Memory</option><option>Monitors & Screens</option><option>Power & Batteries</option><option>Transport & Cases</option><option>Office Electronics</option><option>Formation Costs</option><option>Furniture & Fixtures</option><option>Other</option></select></div>
             <div class="ff"><label>التكلفة ر</label><input type="number" id="na-cost" placeholder="0"></div>
-            <div class="ff"><label>العمر (ساعة)</label><input type="number" id="na-life" placeholder="2000"></div>
+            <div class="ff"><label>معدل الاستهلاك %</label><input type="number" id="na-rate" placeholder="20" step="1" min="1" max="50"></div>
           </div>
           <div id="add-asset-alert" style="font-size:13px;margin-bottom:8px"></div>
           <div style="display:flex;gap:8px"><button class="actbtn" onclick="doAddAsset()">حفظ</button><button class="actbtn out" onclick="toggleAddAsset()">إلغاء</button></div>
         </div>
-        <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>الاسم</th><th>الفئة</th><th>التكلفة</th><th>ساعات</th><th>% استهلاك</th><th>الحالة</th></tr></thead><tbody id="assets-tbl"></tbody></table></div>
+        <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>الاسم</th><th>الفئة</th><th>التكلفة</th><th>معدل</th><th>شهري ر</th><th>ساعات</th><th>الحالة</th></tr></thead><tbody id="assets-tbl"></tbody></table></div>
       </div>
     </div>
+
     <div id="ap-users" class="apg">
       <div class="pgtitle">إدارة المستخدمين</div>
       <div class="acard" style="margin-bottom:14px">
@@ -558,12 +484,13 @@ tr:hover td{background:#FAFBFC}
       </div>
       <div id="users-list"></div>
     </div>
+
     <div id="ap-data" class="apg">
       <div class="pgtitle">إدارة البيانات</div>
       <div class="acard" style="border-color:var(--amber);margin-bottom:14px">
         <div class="atitle" style="color:var(--amber)">حذف سجلات محددة</div>
         <div class="fg2">
-          <div class="ff"><label>نوع البيانات</label><select id="del-type"><option value="log">سجل الاستخدام</option><option value="checkouts">عمليات الخروج</option></select></div>
+          <div class="ff"><label>نوع البيانات</label><select id="del-type"><option value="log">سجل الاستخدام</option><option value="checkouts">عمليات الخروج</option><option value="notes">الملاحظات</option><option value="suggests">الاقتراحات</option></select></div>
           <div class="ff"><label>فلتر (اسم أو مشروع)</label><input type="text" id="del-filter" placeholder="فارغ = حذف الكل"></div>
         </div>
         <div id="del-preview" style="margin-bottom:10px;font-size:13px;color:var(--soft)"></div>
@@ -583,22 +510,175 @@ tr:hover td{background:#FAFBFC}
     </div>
   </div>
 </div>
-`;
 
-// ═══════════════════════════════════════════════
-// SYNC DOT
-// ═══════════════════════════════════════════════
-function setSyncDot(c){
-  const d=document.getElementById('sync-dot');
-  if(!d)return;
-  const m={green:'#16A34A',red:'#DC2626',gray:'#94A3B8',amber:'#D97706'};
-  d.style.background=m[c]||m.gray;
-  if(c!=='gray')setTimeout(()=>setSyncDot('gray'),3000);
-}
+<script>
+const FB='https://footage-assets-default-rtdb.asia-southeast1.firebasedatabase.app';
+async function fbRead(k){try{const r=await fetch(FB+'/'+k+'.json');if(!r.ok)return null;return await r.json();}catch{return null;}}
+async function fbWrite(k,v){try{const r=await fetch(FB+'/'+k+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)});return r.ok;}catch{return false;}}
+function setSyncDot(c){const d=document.getElementById('sync-dot');if(!d)return;const m={green:'#16A34A',red:'#DC2626',gray:'#94A3B8',amber:'#D97706'};d.style.background=m[c]||m.gray;if(c!=='gray')setTimeout(()=>setSyncDot('gray'),3000);}
 
-// ═══════════════════════════════════════════════
-// AUTH
-// ═══════════════════════════════════════════════
+const DEFAULT_USERS=[
+  {id:'u1',name:'المحاسب',username:'accountant',password:'footage2026',role:'accountant',title:'محاسب',photo:''},
+  {id:'u2',name:'أحمد الوهيبي',username:'ahmed',password:'1234',role:'crew',title:'مصور',photo:''},
+  {id:'u3',name:'خالد البلوشي',username:'khalid',password:'1234',role:'crew',title:'مونتير',photo:''},
+  {id:'u4',name:'سالم الحارثي',username:'salem',password:'1234',role:'crew',title:'مصور فيديو',photo:''},
+  {id:'u5',name:'يوسف الراشدي',username:'yousuf',password:'1234',role:'crew',title:'موشن جرافيك',photo:''}
+];
+
+const INIT_ASSETS=[
+{code:"FTG-PP-EC-0001",name:"Apple macbook pro M4 Max 14",cat:"Computers & Editing",cost:1309.996,lifeYears:4,depRate:0.25,annualDep:327.499,monthlyDep:27.2916,usedH:0,lifeH:8000,status:"available",purchaseDate:"2025-12-28",fieldUse:true},
+{code:"FTG-PP-EC-0002",name:"Apple macbook pro M2 Pro",cat:"Computers & Editing",cost:850.0,lifeYears:4,depRate:0.25,annualDep:212.5,monthlyDep:17.7083,usedH:0,lifeH:8000,status:"available",purchaseDate:"2023-03-01",fieldUse:true},
+{code:"FTG-PP-EC-0003",name:"Apple macbook pro M3 Max",cat:"Computers & Editing",cost:1700.0,lifeYears:4,depRate:0.25,annualDep:425.0,monthlyDep:35.4167,usedH:0,lifeH:8000,status:"available",purchaseDate:"2023-05-01",fieldUse:true},
+{code:"FTG-PP-LT-0001",name:"PC R7 32",cat:"Computers & Editing",cost:800.0,lifeYears:4,depRate:0.25,annualDep:200.0,monthlyDep:16.6667,usedH:0,lifeH:8000,status:"available",purchaseDate:"2021-12-01",fieldUse:true},
+{code:"FTG-PP-LT-0002",name:"Apple macbook Air M1 silver",cat:"Computers & Editing",cost:350.0,lifeYears:4,depRate:0.25,annualDep:87.5,monthlyDep:7.2917,usedH:0,lifeH:8000,status:"available",purchaseDate:"2021-07-01",fieldUse:true},
+{code:"FTG-PP-LT-0003",name:"Apple macbook pro I7 2017",cat:"Computers & Editing",cost:250.0,lifeYears:4,depRate:0.25,annualDep:62.5,monthlyDep:5.2083,usedH:0,lifeH:8000,status:"available",purchaseDate:"2019-12-21",fieldUse:true},
+{code:"FTG-PP-LT-0004",name:"Apple macbook pro I7 2018",cat:"Computers & Editing",cost:300.0,lifeYears:4,depRate:0.25,annualDep:75.0,monthlyDep:6.25,usedH:0,lifeH:8000,status:"available",purchaseDate:"2019-12-21",fieldUse:true},
+{code:"FTG-PE-CA-0001",name:"Canon EOS RC5 Mirorless Cinema Camera",cat:"Cameras",cost:1942.5,lifeYears:5,depRate:0.2,annualDep:388.5,monthlyDep:32.375,usedH:0,lifeH:6000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PE-LN-0001",name:"Canon RF 24-105mm f/4L USM",cat:"Lenses",cost:439.0,lifeYears:6.7,depRate:0.15,annualDep:65.85,monthlyDep:5.4875,usedH:0,lifeH:8000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PE-LN-0002",name:"Canon RF 70-200mm f/2.8L USM",cat:"Lenses",cost:1002.75,lifeYears:6.7,depRate:0.15,annualDep:150.412,monthlyDep:12.5343,usedH:0,lifeH:8000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PS-MR-0001",name:"Smallrig Camera Cage for R5c",cat:"Camera Support & Rigs",cost:30.0,lifeYears:6.7,depRate:0.15,annualDep:4.5,monthlyDep:0.375,usedH:0,lifeH:6000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-TS-BB-0001",name:"ProVision Pro Rolling Backpack PV RO",cat:"Camera Support & Rigs",cost:68.25,lifeYears:6.7,depRate:0.15,annualDep:10.237,monthlyDep:0.8531,usedH:0,lifeH:6000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PS-PB-0001",name:"Canon Lithium lon Battery 7.2V",cat:"Power & Batteries",cost:154.35,lifeYears:4.0,depRate:0.25,annualDep:38.587,monthlyDep:3.2156,usedH:0,lifeH:500,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PE-PF-0001",name:"Godox AD600 pro Outdoor Flash (1)",cat:"Lighting",cost:273.0,lifeYears:5,depRate:0.2,annualDep:54.6,monthlyDep:4.55,usedH:0,lifeH:4000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PE-PF-0002",name:"Godox AD600 pro Outdoor Flash (2)",cat:"Lighting",cost:273.0,lifeYears:5,depRate:0.2,annualDep:54.6,monthlyDep:4.55,usedH:0,lifeH:4000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PE-LM-0001",name:"Phottix Raja 30x140cm Softbox (1)",cat:"Lighting",cost:40.0,lifeYears:5,depRate:0.2,annualDep:8.0,monthlyDep:0.6667,usedH:0,lifeH:4000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PE-LM-0002",name:"Phottix Raja 30x140cm Softbox (2)",cat:"Lighting",cost:40.0,lifeYears:5,depRate:0.2,annualDep:8.0,monthlyDep:0.6667,usedH:0,lifeH:4000,status:"available",purchaseDate:"2023-09-18",fieldUse:true},
+{code:"FTG-PE-LM-0003",name:"Godox XProll TTL Wirless Trigger (Canon)",cat:"Lighting",cost:35.0,lifeYears:5,depRate:0.2,annualDep:7.0,monthlyDep:0.5833,usedH:0,lifeH:4000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-TS-BB-0002",name:"Hard Carying Light Stand Case with Wheels",cat:"Camera Support & Rigs",cost:41.0,lifeYears:6.7,depRate:0.15,annualDep:6.15,monthlyDep:0.5125,usedH:0,lifeH:6000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PE-LN-0003",name:"Sigma 24-70mm f/2.8 II",cat:"Lenses",cost:389.0,lifeYears:6.7,depRate:0.15,annualDep:58.35,monthlyDep:4.8625,usedH:0,lifeH:8000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PS-CS-0001",name:"ProVision Tripod DV with Fluid Head",cat:"Camera Support & Rigs",cost:49.0,lifeYears:6.7,depRate:0.15,annualDep:7.35,monthlyDep:0.6125,usedH:0,lifeH:6000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PE-FG-0001",name:"Atomos Ninja V 5-inches 4K Monitor",cat:"Camera Support & Rigs",cost:160.0,lifeYears:6.7,depRate:0.15,annualDep:24.0,monthlyDep:2.0,usedH:0,lifeH:6000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PS-ST-0001",name:"DJI RS3 Pro Gimble Stablization",cat:"Camera Support & Rigs",cost:350.0,lifeYears:6.7,depRate:0.15,annualDep:52.5,monthlyDep:4.375,usedH:0,lifeH:6000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PS-ST-0002",name:"DJI RS4 Pro Gimble Stablization",cat:"Camera Support & Rigs",cost:309.0,lifeYears:6.7,depRate:0.15,annualDep:46.35,monthlyDep:3.8625,usedH:0,lifeH:6000,status:"available",purchaseDate:"2024-12-29",fieldUse:true},
+{code:"FTG-PP-EC-0004",name:"Apple macbook pro M3 Pro",cat:"Computers & Editing",cost:495.0,lifeYears:4,depRate:0.25,annualDep:123.75,monthlyDep:10.3125,usedH:0,lifeH:8000,status:"available",purchaseDate:"2026-02-15",fieldUse:true},
+{code:"FTG-PS-MR-0002",name:"Tilta Full Camera Cage for Sony FX3",cat:"Camera Support & Rigs",cost:68.14,lifeYears:6.7,depRate:0.15,annualDep:10.221,monthlyDep:0.8518,usedH:0,lifeH:6000,status:"available",purchaseDate:"2026-01-30",fieldUse:true},
+{code:"FTG-PP-SM-0001",name:"Lexar CFexpress Type A/SD USB 3.2 Gen 2  Card Reader",cat:"Storage & Memory",cost:160.0,lifeYears:4,depRate:0.25,annualDep:40.0,monthlyDep:3.3333,usedH:0,lifeH:3000,status:"available",purchaseDate:"2026-01-30",fieldUse:true},
+{code:"FTG-PP-SM-0002",name:"Sony 480GB 4.0 Type A TOUGH  Memory Card",cat:"Storage & Memory",cost:151.0,lifeYears:4,depRate:0.25,annualDep:37.75,monthlyDep:3.1458,usedH:0,lifeH:3000,status:"available",purchaseDate:"2026-01-30",fieldUse:true},
+{code:"FTG-PP-SM-0003",name:"Sony 240GB 4.0 Type A TOUGH  Memory Card",cat:"Storage & Memory",cost:94.347,lifeYears:4,depRate:0.25,annualDep:23.587,monthlyDep:1.9656,usedH:0,lifeH:3000,status:"available",purchaseDate:"2026-01-30",fieldUse:true},
+{code:"FTG-PS-LS-0001",name:"Caisi CS-S30CPRO Heavy Duty C Stand With Boom Arm",cat:"Camera Support & Rigs",cost:61.0,lifeYears:6.7,depRate:0.15,annualDep:9.15,monthlyDep:0.7625,usedH:0,lifeH:6000,status:"available",purchaseDate:"2026-01-30",fieldUse:true},
+{code:"FTG-PS-MR-0003",name:"Tilta V Mount Bettary Plate For Ring Grip",cat:"Camera Support & Rigs",cost:51.5,lifeYears:6.7,depRate:0.15,annualDep:7.725,monthlyDep:0.6437,usedH:0,lifeH:6000,status:"available",purchaseDate:"2026-01-30",fieldUse:true},
+{code:"FTG-PS-CS-0002",name:"iFootage LT-4-5.5 Spider Crab Magic Arm 9.5",cat:"Camera Support & Rigs",cost:40.4,lifeYears:6.7,depRate:0.15,annualDep:6.06,monthlyDep:0.505,usedH:0,lifeH:6000,status:"available",purchaseDate:"2026-01-30",fieldUse:true},
+{code:"FTG-PE-LM-0004",name:"Nanlite Brandoor with eggcrate  for Pavotybe II 30X",cat:"Lighting",cost:36.8,lifeYears:5,depRate:0.2,annualDep:7.36,monthlyDep:0.6133,usedH:0,lifeH:4000,status:"available",purchaseDate:"2026-01-30",fieldUse:true},
+{code:"FTG-PS-CS-0003",name:"Smallrig AD-01 Heavy Duty  Tripod with Fluid Head",cat:"Camera Support & Rigs",cost:43.12,lifeYears:6.7,depRate:0.15,annualDep:6.468,monthlyDep:0.539,usedH:0,lifeH:6000,status:"available",purchaseDate:"2025-11-28",fieldUse:true},
+{code:"FTG-PE-LM-0005",name:"amaran Lentern 90 (36')",cat:"Lighting",cost:32.4,lifeYears:5,depRate:0.2,annualDep:6.48,monthlyDep:0.54,usedH:0,lifeH:4000,status:"available",purchaseDate:"2025-11-28",fieldUse:true},
+{code:"FTG-PE-LM-0006",name:"Godox QR-P120T Release Soft Box  with Bowens Mount (47.2')",cat:"Lighting",cost:42.0,lifeYears:5,depRate:0.2,annualDep:8.4,monthlyDep:0.7,usedH:0,lifeH:4000,status:"available",purchaseDate:"2025-11-28",fieldUse:true},
+{code:"FTG-PS-ST-0003",name:"Tilta Basic Ring Grip with Integreted  Control Handle for DJI Ronin",cat:"Camera Support & Rigs",cost:104.3,lifeYears:6.7,depRate:0.15,annualDep:15.645,monthlyDep:1.3037,usedH:0,lifeH:6000,status:"available",purchaseDate:"2025-11-28",fieldUse:true},
+{code:"FTG-PE-LM-0007",name:"Glide Gear Butterfly 3-in-1  Silk Scrim Diffuser Kit",cat:"Lighting",cost:115.1,lifeYears:5,depRate:0.2,annualDep:23.02,monthlyDep:1.9183,usedH:0,lifeH:4000,status:"available",purchaseDate:"2025-11-28",fieldUse:true},
+{code:"FTG-PE-LM-0008",name:"Impact Full Frame Black Flage (24x36')",cat:"Lighting",cost:24.6,lifeYears:5,depRate:0.2,annualDep:4.92,monthlyDep:0.41,usedH:0,lifeH:4000,status:"available",purchaseDate:"2025-11-28",fieldUse:true},
+{code:"FTG-PE-AD-0001",name:"Senneiser MKE 600 Shotgun Mic",cat:"Audio",cost:134.4,lifeYears:6.7,depRate:0.15,annualDep:20.16,monthlyDep:1.68,usedH:0,lifeH:5000,status:"available",purchaseDate:"2025-07-13",fieldUse:true},
+{code:"FTG-PS-AS-0001",name:"Focus Microphone Boom Arm",cat:"Audio",cost:19.95,lifeYears:6.7,depRate:0.15,annualDep:2.992,monthlyDep:0.2493,usedH:0,lifeH:5000,status:"available",purchaseDate:"2025-07-13",fieldUse:true},
+{code:"FTG-PE-CA-0002",name:"Sony FX3 Full Frame Cinema Camera",cat:"Cameras",cost:1290.0,lifeYears:5,depRate:0.2,annualDep:258.0,monthlyDep:21.5,usedH:0,lifeH:6000,status:"available",purchaseDate:"2024-12-29",fieldUse:true},
+{code:"FTG-PE-LN-0004",name:"Sony FE 16-35mm f/2.8 GM II",cat:"Lenses",cost:749.0,lifeYears:6.7,depRate:0.15,annualDep:112.35,monthlyDep:9.3625,usedH:0,lifeH:8000,status:"available",purchaseDate:"2024-12-29",fieldUse:true},
+{code:"FTG-PE-CA-0003",name:"Sony a7siii",cat:"Cameras",cost:1049.0,lifeYears:5,depRate:0.2,annualDep:209.8,monthlyDep:17.4833,usedH:0,lifeH:6000,status:"available",purchaseDate:"2024-07-31",fieldUse:true},
+{code:"FTG-PS-LS-0002",name:"Phottix Studio Pro Boom Stand W400",cat:"Camera Support & Rigs",cost:99.0,lifeYears:6.7,depRate:0.15,annualDep:14.85,monthlyDep:1.2375,usedH:0,lifeH:6000,status:"available",purchaseDate:"2024-06-15",fieldUse:true},
+{code:"FTG-PE-VL-0001",name:"Nanlite FS-300B Bi Color LED Spot Light",cat:"Lighting",cost:110.0,lifeYears:5,depRate:0.2,annualDep:22.0,monthlyDep:1.8333,usedH:0,lifeH:4000,status:"available",purchaseDate:"2024-06-15",fieldUse:true},
+{code:"FTG-PE-CA-0004",name:"DJI Mini 5 Pro Combo  with DJI RC2",cat:"Cameras",cost:453.0,lifeYears:5,depRate:0.2,annualDep:90.6,monthlyDep:7.55,usedH:0,lifeH:6000,status:"available",purchaseDate:"2025-11-11",fieldUse:true},
+{code:"FTG-PS-CS-0004",name:"Smallrig Matte Box  for DSLR Mirrorless Cameras",cat:"Camera Support & Rigs",cost:142.0,lifeYears:6.7,depRate:0.15,annualDep:21.3,monthlyDep:1.775,usedH:0,lifeH:6000,status:"available",purchaseDate:"2024-03-02",fieldUse:true},
+{code:"FTG-PS-PB-0002",name:"Smallrig Mini VC Mount Battery VB99",cat:"Power & Batteries",cost:99.0,lifeYears:4.0,depRate:0.25,annualDep:24.75,monthlyDep:2.0625,usedH:0,lifeH:500,status:"available",purchaseDate:"2024-03-02",fieldUse:true},
+{code:"FTG-PS-MR-0004",name:"Smallrig V Mount Battery Mount Plate",cat:"Camera Support & Rigs",cost:31.0,lifeYears:6.7,depRate:0.15,annualDep:4.65,monthlyDep:0.3875,usedH:0,lifeH:6000,status:"available",purchaseDate:"2024-03-02",fieldUse:true},
+{code:"FTG-PS-MR-0005",name:"Smallrig Arri Locating Handle 2165B",cat:"Camera Support & Rigs",cost:27.5,lifeYears:6.7,depRate:0.15,annualDep:4.125,monthlyDep:0.3438,usedH:0,lifeH:6000,status:"available",purchaseDate:"2024-03-02",fieldUse:true},
+{code:"FTG-PE-VL-0002",name:"amaran COB 300c RGBWW",cat:"Lighting",cost:205.2,lifeYears:5,depRate:0.2,annualDep:41.04,monthlyDep:3.42,usedH:0,lifeH:4000,status:"available",purchaseDate:"2024-06-15",fieldUse:true},
+{code:"FTG-PE-LM-0009",name:"amaran Spotlight SE 19degree  Lens Kit Demo",cat:"Lighting",cost:152.2,lifeYears:5,depRate:0.2,annualDep:30.44,monthlyDep:2.5367,usedH:0,lifeH:4000,status:"available",purchaseDate:"2024-06-15",fieldUse:true},
+{code:"FTG-PS-PB-0003",name:"Smallrig Pro Mini V Mount Battery VB99",cat:"Power & Batteries",cost:129.2,lifeYears:4.0,depRate:0.25,annualDep:32.3,monthlyDep:2.6917,usedH:0,lifeH:500,status:"available",purchaseDate:"2024-06-15",fieldUse:true},
+{code:"FTG-PE-AD-0002",name:"RODECASTER PRO II INTEGRATED  AUDIO PRODUCTION STUDIO BLACK",cat:"Audio",cost:238.0,lifeYears:6.7,depRate:0.15,annualDep:35.7,monthlyDep:2.975,usedH:0,lifeH:5000,status:"available",purchaseDate:"2025-09-04",fieldUse:true},
+{code:"FTG-PE-AD-0003",name:"Rode PodMic DynaMic  Podcasting Microphone",cat:"Audio",cost:45.0,lifeYears:6.7,depRate:0.15,annualDep:6.75,monthlyDep:0.5625,usedH:0,lifeH:5000,status:"available",purchaseDate:"2025-09-04",fieldUse:true},
+{code:"FTG-PE-AD-0004",name:"RODE PodMic USB DynaMic Podcasting Microphone (1)",cat:"Audio",cost:79.0,lifeYears:6.7,depRate:0.15,annualDep:11.85,monthlyDep:0.9875,usedH:0,lifeH:5000,status:"available",purchaseDate:"2025-09-04",fieldUse:true},
+{code:"FTG-PE-AD-0005",name:"RODE PodMic USB DynaMic Podcasting Microphone (2)",cat:"Audio",cost:79.0,lifeYears:6.7,depRate:0.15,annualDep:11.85,monthlyDep:0.9875,usedH:0,lifeH:5000,status:"available",purchaseDate:"2025-09-04",fieldUse:true},
+{code:"FTG-PE-FG-0002",name:"Hollyland Mars 4K Wireless  Video Transmission System",cat:"Camera Support & Rigs",cost:250.0,lifeYears:6.7,depRate:0.15,annualDep:37.5,monthlyDep:3.125,usedH:0,lifeH:6000,status:"available",purchaseDate:"2025-07-02",fieldUse:true},
+{code:"FTG-PE-AD-0006",name:"Hollyland Lark M2  Wireless Microphone (1)",cat:"Audio",cost:48.0,lifeYears:6.7,depRate:0.15,annualDep:7.2,monthlyDep:0.6,usedH:0,lifeH:5000,status:"available",purchaseDate:"2024-11-25",fieldUse:true},
+{code:"FTG-PE-AD-0007",name:"Hollyland Lark M2  Wireless Microphone (2)",cat:"Audio",cost:48.0,lifeYears:6.7,depRate:0.15,annualDep:7.2,monthlyDep:0.6,usedH:0,lifeH:5000,status:"available",purchaseDate:"2024-11-25",fieldUse:true},
+{code:"FTG-PP-SM-0004",name:"Sandisk Extreme Portable SSD 1TB",cat:"Storage & Memory",cost:33.9,lifeYears:4,depRate:0.25,annualDep:8.475,monthlyDep:0.7062,usedH:0,lifeH:3000,status:"available",purchaseDate:"2024-11-22",fieldUse:true},
+{code:"FTG-PP-SM-0005",name:"Sandisk Extreme Portable SSD 2TB (1)",cat:"Storage & Memory",cost:58.0,lifeYears:4,depRate:0.25,annualDep:14.5,monthlyDep:1.2083,usedH:0,lifeH:3000,status:"available",purchaseDate:"2024-11-22",fieldUse:true},
+{code:"FTG-PP-SM-0006",name:"Sandisk Extreme Portable SSD 2TB (2)",cat:"Storage & Memory",cost:58.0,lifeYears:4,depRate:0.25,annualDep:14.5,monthlyDep:1.2083,usedH:0,lifeH:3000,status:"available",purchaseDate:"2025-06-25",fieldUse:true},
+{code:"FTG-PP-SM-0007",name:"Extreme Portable SSD 2TB",cat:"Storage & Memory",cost:52.0,lifeYears:4,depRate:0.25,annualDep:13.0,monthlyDep:1.0833,usedH:0,lifeH:3000,status:"available",purchaseDate:"2023-11-01",fieldUse:true},
+{code:"FTG-PP-SM-0008",name:"Lexar 1667X 256GB",cat:"Storage & Memory",cost:60.0,lifeYears:4,depRate:0.25,annualDep:15.0,monthlyDep:1.25,usedH:0,lifeH:3000,status:"available",purchaseDate:"2024-04-13",fieldUse:true},
+{code:"FTG-PS-CS-0005",name:"Focus Electric Background System",cat:"Camera Support & Rigs",cost:84.0,lifeYears:6.7,depRate:0.15,annualDep:12.6,monthlyDep:1.05,usedH:0,lifeH:6000,status:"available",purchaseDate:"2024-05-22",fieldUse:true},
+{code:"FTG-PS-CS-0006",name:"Paper Background",cat:"Camera Support & Rigs",cost:53.0,lifeYears:6.7,depRate:0.15,annualDep:7.95,monthlyDep:0.6625,usedH:0,lifeH:6000,status:"available",purchaseDate:"2025-09-10",fieldUse:true},
+{code:"FTG-PP-SM-0009",name:"Angelbird 512GB AV PRO CFexpress 2.0  Type B SE Memory Card",cat:"Storage & Memory",cost:80.0,lifeYears:4,depRate:0.25,annualDep:20.0,monthlyDep:1.6667,usedH:0,lifeH:3000,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PP-SM-0010",name:"SanDisk Extreme PRO CFexpress  Type B Card Reader",cat:"Storage & Memory",cost:135.0,lifeYears:4,depRate:0.25,annualDep:33.75,monthlyDep:2.8125,usedH:0,lifeH:3000,status:"available",purchaseDate:"2024-04-17",fieldUse:true},
+{code:"FTG-PS-PB-0004",name:"Sony NP-FZ100 Battery",cat:"Power & Batteries",cost:139.5,lifeYears:4.0,depRate:0.25,annualDep:34.875,monthlyDep:2.9062,usedH:0,lifeH:500,status:"available",purchaseDate:"2024-08-05",fieldUse:true},
+{code:"FTG-PS-PB-0005",name:"Sony BC-QZ1 Battery Charger",cat:"Power & Batteries",cost:192.5,lifeYears:4.0,depRate:0.25,annualDep:48.125,monthlyDep:4.0104,usedH:0,lifeH:500,status:"available",purchaseDate:"2024-07-31",fieldUse:true},
+{code:"FTG-PS-PB-0006",name:"Canon LC-E6 Charger for  LP-E6NH Battery Packs",cat:"Power & Batteries",cost:80.0,lifeYears:4.0,depRate:0.25,annualDep:20.0,monthlyDep:1.6667,usedH:0,lifeH:500,status:"available",purchaseDate:"2023-09-17",fieldUse:true},
+{code:"FTG-PS-CS-0007",name:"Autocue Explorer Teleprompter System",cat:"Camera Support & Rigs",cost:80.0,lifeYears:6.7,depRate:0.15,annualDep:12.0,monthlyDep:1.0,usedH:0,lifeH:6000,status:"available",purchaseDate:"2023-11-10",fieldUse:true},
+{code:"FTG-PE-CA-0005",name:"GoPro Hero 11",cat:"Cameras",cost:154.0,lifeYears:5,depRate:0.2,annualDep:30.8,monthlyDep:2.5667,usedH:0,lifeH:6000,status:"available",purchaseDate:"2023-05-18",fieldUse:true},
+{code:"FTG-PP-EC-0005",name:"Blackmagic Design ‎DV/RES/BBPNLMLEKA  DaVinci Resolve Speed Editor",cat:"Computers & Editing",cost:130.0,lifeYears:4,depRate:0.25,annualDep:32.5,monthlyDep:2.7083,usedH:0,lifeH:8000,status:"available",purchaseDate:"2023-02-09",fieldUse:true},
+{code:"FTG-PP-SC-0001",name:"Mi 32 monitor 3340*1440 (50 Hz ) Xaomi",cat:"Monitors & Screens",cost:140.0,lifeYears:5,depRate:0.2,annualDep:28.0,monthlyDep:2.3333,usedH:0,lifeH:10000,status:"available",purchaseDate:"2024-02-04",fieldUse:true},
+{code:"FTG-PP-SC-0002",name:"Mi 32 monitor 3340*1440 (50 Hz ) Xaomi",cat:"Monitors & Screens",cost:140.0,lifeYears:5,depRate:0.2,annualDep:28.0,monthlyDep:2.3333,usedH:0,lifeH:10000,status:"available",purchaseDate:"2023-06-05",fieldUse:true},
+{code:"FTG-PP-SC-0003",name:"P24FBA-28-RAGL 1920*1080 Xaomi",cat:"Monitors & Screens",cost:35.0,lifeYears:5,depRate:0.2,annualDep:7.0,monthlyDep:0.5833,usedH:0,lifeH:10000,status:"available",purchaseDate:"2024-11-18",fieldUse:true},
+{code:"FTG-PP-SC-0004",name:"P24FBA-28-RAGL 1920*1080 Xaomi",cat:"Monitors & Screens",cost:35.0,lifeYears:5,depRate:0.2,annualDep:7.0,monthlyDep:0.5833,usedH:0,lifeH:10000,status:"available",purchaseDate:"2024-11-20",fieldUse:true},
+{code:"FTG-PP-SC-0005",name:"P24FBA-28-RAGL 1920*1080 Xaomi",cat:"Monitors & Screens",cost:35.0,lifeYears:5,depRate:0.2,annualDep:7.0,monthlyDep:0.5833,usedH:0,lifeH:10000,status:"available",purchaseDate:"2024-11-20",fieldUse:true},
+{code:"FTG-PP-SC-0006",name:"P24FBA-28-RAGL 1920*1080 Xaomi",cat:"Monitors & Screens",cost:35.0,lifeYears:5,depRate:0.2,annualDep:7.0,monthlyDep:0.5833,usedH:0,lifeH:10000,status:"available",purchaseDate:"2024-11-21",fieldUse:true},
+{code:"FTG-PP-SC-0007",name:"LG-27MP400 1920*1080",cat:"Monitors & Screens",cost:64.0,lifeYears:5,depRate:0.2,annualDep:12.8,monthlyDep:1.0667,usedH:0,lifeH:10000,status:"available",purchaseDate:"2023-02-16",fieldUse:true},
+{code:"FTG-PP-SC-0008",name:"Mi 30 HFCW Xaomi",cat:"Monitors & Screens",cost:91.0,lifeYears:5,depRate:0.2,annualDep:18.2,monthlyDep:1.5167,usedH:0,lifeH:10000,status:"available",purchaseDate:"2023-11-17",fieldUse:true},
+{code:"FTG-PP-SC-0009",name:"Mi 30 HFCW Xaomi",cat:"Monitors & Screens",cost:91.0,lifeYears:5,depRate:0.2,annualDep:18.2,monthlyDep:1.5167,usedH:0,lifeH:10000,status:"available",purchaseDate:"2024-02-03",fieldUse:true},
+{code:"FTG-PP-SC-0010",name:"AOC Irise ® Xe Graphics 1920*1080 120 Hz",cat:"Monitors & Screens",cost:32.0,lifeYears:5,depRate:0.2,annualDep:6.4,monthlyDep:0.5333,usedH:0,lifeH:10000,status:"available",purchaseDate:"2023-05-04",fieldUse:true},
+{code:"FTG-OF-ED-0001",name:"Nikai 86 Inch 4K QLED",cat:"Office Electronics",cost:450.0,lifeYears:6.7,depRate:0.15,annualDep:67.5,monthlyDep:5.625,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-11-28",fieldUse:true},
+{code:"FTG-OF-ED-0002",name:"Brother MFC-L375 Printer",cat:"Office Electronics",cost:140.0,lifeYears:6.7,depRate:0.15,annualDep:21.0,monthlyDep:1.75,usedH:0,lifeH:9999,status:"available",purchaseDate:"2025-04-29",fieldUse:true},
+{code:"FTG-OF-FC-0001",name:"Ductable AC Hisence OMAUD-42CX4SHH",cat:"Formation Costs",cost:1855.0,lifeYears:15,depRate:0.067,annualDep:124.285,monthlyDep:10.3571,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-04-13",fieldUse:false},
+{code:"FTG-OF-FC-0002",name:"Cassette AC Kelon KAC-36UC",cat:"Formation Costs",cost:1100.0,lifeYears:15,depRate:0.067,annualDep:73.7,monthlyDep:6.1417,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-08-18",fieldUse:false},
+{code:"FTG-OF-OA-0001",name:"Red Curtain",cat:"Furniture & Fixtures",cost:85.0,lifeYears:10,depRate:0.1,annualDep:8.5,monthlyDep:0.7083,usedH:0,lifeH:9999,status:"available",purchaseDate:"2025-09-28",fieldUse:false},
+{code:"FTG-OF-OA-0002",name:"Workstation for Four Person (240*120)",cat:"Furniture & Fixtures",cost:409.0,lifeYears:10,depRate:0.1,annualDep:40.9,monthlyDep:3.4083,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-11",fieldUse:false},
+{code:"FTG-OF-OA-0003",name:"Staff Chairs",cat:"Furniture & Fixtures",cost:344.0,lifeYears:10,depRate:0.1,annualDep:34.4,monthlyDep:2.8667,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-11",fieldUse:false},
+{code:"FTG-OF-OA-0004",name:"High Back Chair",cat:"Furniture & Fixtures",cost:94.3,lifeYears:10,depRate:0.1,annualDep:9.43,monthlyDep:0.7858,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-11",fieldUse:false},
+{code:"FTG-OF-OA-0005",name:"Visitor Chair",cat:"Furniture & Fixtures",cost:157.2,lifeYears:10,depRate:0.1,annualDep:15.72,monthlyDep:1.31,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-11",fieldUse:false},
+{code:"FTG-OF-OA-0006",name:"Meeting Table (200*100)",cat:"Furniture & Fixtures",cost:115.3,lifeYears:10,depRate:0.1,annualDep:11.53,monthlyDep:0.9608,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-11",fieldUse:false},
+{code:"FTG-OF-FC-0003",name:"AC Equipment Spare Parts",cat:"Formation Costs",cost:285.0,lifeYears:15,depRate:0.067,annualDep:19.095,monthlyDep:1.5912,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-04-28",fieldUse:false},
+{code:"FTG-OF-LG-0001",name:"Main Office Sealling Lights",cat:"Furniture & Fixtures",cost:396.4,lifeYears:10,depRate:0.1,annualDep:39.64,monthlyDep:3.3033,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-10",fieldUse:false},
+{code:"FTG-OF-FC-0004",name:"Main Office Floor Sockat",cat:"Formation Costs",cost:34.3,lifeYears:15,depRate:0.067,annualDep:2.298,monthlyDep:0.1915,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-10",fieldUse:false},
+{code:"FTG-OF-LG-0002",name:"Studio Sealling Lights",cat:"Furniture & Fixtures",cost:180.5,lifeYears:10,depRate:0.1,annualDep:18.05,monthlyDep:1.5042,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-08-29",fieldUse:false},
+{code:"FTG-OF-FC-0005",name:"Electricity Wire Connection",cat:"Formation Costs",cost:165.0,lifeYears:15,depRate:0.067,annualDep:11.055,monthlyDep:0.9213,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-04-28",fieldUse:false},
+{code:"FTG-OF-FC-0006",name:"Studio Floor Sockat",cat:"Formation Costs",cost:51.0,lifeYears:15,depRate:0.067,annualDep:3.417,monthlyDep:0.2848,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-08-04",fieldUse:false},
+{code:"FTG-OF-OA-0007",name:"Main Office Accessories",cat:"Furniture & Fixtures",cost:74.0,lifeYears:10,depRate:0.1,annualDep:7.4,monthlyDep:0.6167,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-06-11",fieldUse:false},
+{code:"FTG-OF-FC-0007",name:"Ethernet Cables and Connections",cat:"Formation Costs",cost:91.0,lifeYears:15,depRate:0.067,annualDep:6.097,monthlyDep:0.5081,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-04-01",fieldUse:false},
+{code:"FTG-OF-OA-0008",name:"Main Office Opperation Acrylic Board",cat:"Furniture & Fixtures",cost:145.0,lifeYears:10,depRate:0.1,annualDep:14.5,monthlyDep:1.2083,usedH:0,lifeH:9999,status:"available",purchaseDate:"2025-10-13",fieldUse:false},
+{code:"FTG-OF-FC-0008",name:"3D Sign Board",cat:"Formation Costs",cost:350.0,lifeYears:15,depRate:0.067,annualDep:23.45,monthlyDep:1.9542,usedH:0,lifeH:9999,status:"available",purchaseDate:"2025-03-17",fieldUse:false},
+{code:"FTG-OF-OA-0009",name:"Ice Maker",cat:"Furniture & Fixtures",cost:32.9,lifeYears:10,depRate:0.1,annualDep:3.29,monthlyDep:0.2742,usedH:0,lifeH:9999,status:"available",purchaseDate:"2025-09-22",fieldUse:false},
+{code:"FTG-OF-ED-0003",name:"Table Refrigerator",cat:"Office Electronics",cost:250.0,lifeYears:6.7,depRate:0.15,annualDep:37.5,monthlyDep:3.125,usedH:0,lifeH:9999,status:"available",purchaseDate:"2023-05-11",fieldUse:true},
+{code:"FTG-OF-OA-0010",name:"Workshope Chairs",cat:"Furniture & Fixtures",cost:336.0,lifeYears:10,depRate:0.1,annualDep:33.6,monthlyDep:2.8,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-17",fieldUse:false},
+{code:"FTG-OF-ED-0004",name:"Air Cleaner",cat:"Office Electronics",cost:72.0,lifeYears:6.7,depRate:0.15,annualDep:10.8,monthlyDep:0.9,usedH:0,lifeH:9999,status:"available",purchaseDate:"2023-05-11",fieldUse:true},
+{code:"FTG-OF-OA-0011",name:"SLÄKT Storage box with castors",cat:"Furniture & Fixtures",cost:35.0,lifeYears:10,depRate:0.1,annualDep:3.5,monthlyDep:0.2917,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-12-21",fieldUse:false},
+{code:"FTG-OF-ED-0005",name:"Asustor Lockestor 4 Gen2  NAS 40T",cat:"Office Electronics",cost:800.0,lifeYears:6.7,depRate:0.15,annualDep:120.0,monthlyDep:10.0,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-11-30",fieldUse:true},
+{code:"FTG-OF-OA-0012",name:"Xaumi 34\" Moniture 1",cat:"Furniture & Fixtures",cost:140.0,lifeYears:10,depRate:0.1,annualDep:14.0,monthlyDep:1.1667,usedH:0,lifeH:9999,status:"available",purchaseDate:"2023-07-06",fieldUse:false},
+{code:"FTG-OF-OA-0013",name:"Xaumi 32\" Moniture 1",cat:"Furniture & Fixtures",cost:89.0,lifeYears:10,depRate:0.1,annualDep:8.9,monthlyDep:0.7417,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-22",fieldUse:false},
+{code:"FTG-OF-OA-0014",name:"Xaumi 34\" Moniture 2",cat:"Furniture & Fixtures",cost:140.0,lifeYears:10,depRate:0.1,annualDep:14.0,monthlyDep:1.1667,usedH:0,lifeH:9999,status:"available",purchaseDate:"2023-07-19",fieldUse:false},
+{code:"FTG-OF-OA-0015",name:"Xaumi 32\" Moniture 2",cat:"Furniture & Fixtures",cost:89.0,lifeYears:10,depRate:0.1,annualDep:8.9,monthlyDep:0.7417,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-24",fieldUse:false},
+{code:"FTG-OF-OA-0016",name:"Xaumi 23\" Moniture",cat:"Furniture & Fixtures",cost:136.0,lifeYears:10,depRate:0.1,annualDep:13.6,monthlyDep:1.1333,usedH:0,lifeH:9999,status:"available",purchaseDate:"2025-04-09",fieldUse:false},
+{code:"FTG-OF-OA-0017",name:"AUC 23\" Moniture",cat:"Furniture & Fixtures",cost:210.0,lifeYears:10,depRate:0.1,annualDep:21.0,monthlyDep:1.75,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-26",fieldUse:false},
+{code:"FTG-OF-OA-0018",name:"Sammsung QLED 65 Inch",cat:"Furniture & Fixtures",cost:150.0,lifeYears:10,depRate:0.1,annualDep:15.0,monthlyDep:1.25,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-27",fieldUse:false},
+{code:"FTG-OF-OFR-0001",name:"Client Furniture",cat:"Furniture & Fixtures",cost:570.0,lifeYears:10,depRate:0.1,annualDep:57.0,monthlyDep:4.75,usedH:0,lifeH:9999,status:"available",purchaseDate:"2023-06-07",fieldUse:false},
+{code:"FTG-OF-OA-0019",name:"Manegares Tabels",cat:"Furniture & Fixtures",cost:480.0,lifeYears:10,depRate:0.1,annualDep:48.0,monthlyDep:4.0,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-29",fieldUse:false},
+{code:"FTG-OF-OA-0020",name:"Main Office Curtain",cat:"Furniture & Fixtures",cost:0.0,lifeYears:10,depRate:0.1,annualDep:0.0,monthlyDep:0.0,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-30",fieldUse:false},
+{code:"FTG-OF-OA-0021",name:"Main Office Curtain",cat:"Furniture & Fixtures",cost:0.0,lifeYears:10,depRate:0.1,annualDep:0.0,monthlyDep:0.0,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-05-31",fieldUse:false},
+{code:"FTG-OF-OA-0022",name:"Main Office Curtain",cat:"Furniture & Fixtures",cost:0.0,lifeYears:10,depRate:0.1,annualDep:0.0,monthlyDep:0.0,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-06-01",fieldUse:false},
+{code:"FTG-OF-OA-0023",name:"Main Office Curtain",cat:"Furniture & Fixtures",cost:0.0,lifeYears:10,depRate:0.1,annualDep:0.0,monthlyDep:0.0,usedH:0,lifeH:9999,status:"available",purchaseDate:"2024-06-02",fieldUse:false}
+];
+
+const FIELD_CATS=['Cameras','Lenses','Lighting','Audio','Camera Support & Rigs','Computers & Editing','Storage & Memory','Monitors & Screens','Power & Batteries','Transport & Cases'];
+const ALL_CATS=['Cameras','Lenses','Lighting','Audio','Camera Support & Rigs','Computers & Editing','Storage & Memory','Monitors & Screens','Power & Batteries','Transport & Cases','Office Electronics','Formation Costs','Furniture & Fixtures','Other'];
+const CAT_AR={'Cameras':'كاميرات','Lenses':'عدسات','Lighting':'إضاءة','Audio':'صوتيات','Camera Support & Rigs':'حوامل وريج','Computers & Editing':'حواسيب ومونتاج','Storage & Memory':'تخزين وذاكرة','Monitors & Screens':'شاشات وميداني','Power & Batteries':'بطاريات وطاقة','Transport & Cases':'حقائب ونقل','Office Electronics':'إلكترونيات مكتبية','Formation Costs':'مصاريف التأسيس','Furniture & Fixtures':'أثاث وتجهيزات','Other':'أخرى'};
+
+const TOTAL_MONTHLY_DEP = 427.64;
+
+let CU=null, selCat='all', selAssets=new Set();
+const now=()=>new Date().toISOString().slice(0,16);
+const fmt=s=>{if(!s)return'—';const d=new Date(s);return d.toLocaleDateString('ar-OM',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});};
+const fmtD=s=>{if(!s)return'—';return new Date(s).toLocaleDateString('ar-OM',{year:'numeric',month:'short',day:'numeric'});};
+const isLate=e=>e&&new Date(e)<new Date();
+
+async function getUsers(){const r=await fbRead('users');return(r&&Array.isArray(r)&&r.length>0)?r:DEFAULT_USERS;}
+async function saveUsers(u){return await fbWrite('users',u);}
+async function getAssets(){const r=await fbRead('assets');return(r&&Array.isArray(r)&&r.length>0)?r:INIT_ASSETS;}
+async function saveAssets(a){return await fbWrite('assets',a);}
+async function getCheckouts(){const r=await fbRead('checkouts');return(r&&Array.isArray(r))?r:[];}
+async function saveCheckouts(c){return await fbWrite('checkouts',c);}
+async function getLogs(){const r=await fbRead('log');return(r&&Array.isArray(r))?r:[];}
+async function saveLogs(l){return await fbWrite('log',l);}
+async function getNotes(){const r=await fbRead('notes');return(r&&Array.isArray(r))?r:[];}
+async function saveNotes(n){return await fbWrite('notes',n);}
+async function getSuggests(){const r=await fbRead('suggests');return(r&&Array.isArray(r))?r:[];}
+async function saveSuggests(s){return await fbWrite('suggests',s);}
+
+// ── AUTH ──
 async function doLogin(){
   const u=document.getElementById('l-user').value.trim().toLowerCase();
   const p=document.getElementById('l-pass').value;
@@ -606,32 +686,21 @@ async function doLogin(){
   const err=document.getElementById('lb-err');
   err.style.display='none';
   btn.textContent='جاري التحقق...';btn.disabled=true;
-
-  // Always fetch from Firebase
-  const users = await getUsers();
-
+  const users=await getUsers();
   btn.textContent='دخول';btn.disabled=false;
   const found=users.find(x=>x.username.toLowerCase()===u&&x.password===p);
   if(!found){err.textContent='اسم المستخدم أو كلمة المرور غير صحيحة';err.style.display='block';return;}
   if(found.disabled){err.textContent='حسابك موقوف — تواصل مع المحاسب';err.style.display='block';return;}
-
   CU=found;
   document.getElementById('login-wrap').style.display='none';
   document.getElementById('topbar').style.display='flex';
-  document.getElementById('tb-av').textContent=CU.name[0];
+  const av=document.getElementById('tb-av');
+  if(CU.photo){av.innerHTML=`<img src="${CU.photo}">`;}else{av.textContent=CU.name[0];}
   document.getElementById('tb-name').textContent=CU.name;
-
-  if(CU.role==='accountant'){
-    document.getElementById('acc-wrap').style.display='grid';
-    await renderDash();
-    startPolling();
-  } else {
-    document.getElementById('crew-wrap').style.display='block';
-    document.getElementById('t-out').value=now();
-    await renderCrewMain();
-  }
+  document.getElementById('tb-role').textContent=CU.role==='accountant'?'محاسب':'فني';
+  if(CU.role==='accountant'){document.getElementById('acc-wrap').style.display='grid';await renderAcc();startPolling();}
+  else{document.getElementById('crew-wrap').style.display='block';document.getElementById('t-out').value=now();await renderCrewMain();}
 }
-
 function doLogout(){
   CU=null;
   document.getElementById('login-wrap').style.display='flex';
@@ -641,54 +710,46 @@ function doLogout(){
   document.getElementById('l-user').value='';
   document.getElementById('l-pass').value='';
 }
-
-function toggleReset(){
-  const b=document.getElementById('reset-box');
-  b.style.display=b.style.display==='none'?'block':'none';
-}
-
+function toggleReset(){const b=document.getElementById('reset-box');b.style.display=b.style.display==='none'?'block':'none';}
 async function doReset(){
   const u=document.getElementById('r-user').value.trim().toLowerCase();
   const np=document.getElementById('r-new').value;
   const cp=document.getElementById('r-conf').value;
   const alrt=document.getElementById('r-alert');
   if(!u||!np){alrt.innerHTML='<span style="color:var(--red)">تعبئة جميع الحقول</span>';return;}
-  if(np!==cp){alrt.innerHTML='<span style="color:var(--red)">كلمة المرور غير متطابقة</span>';return;}
-  if(np.length<4){alrt.innerHTML='<span style="color:var(--red)">كلمة المرور قصيرة</span>';return;}
+  if(np!==cp){alrt.innerHTML='<span style="color:var(--red)">غير متطابقة</span>';return;}
+  if(np.length<4){alrt.innerHTML='<span style="color:var(--red)">قصيرة جداً</span>';return;}
   const users=await getUsers();
   const found=users.find(x=>x.username.toLowerCase()===u);
   if(!found){alrt.innerHTML='<span style="color:var(--red)">المستخدم غير موجود</span>';return;}
   found.password=np;
   const ok=await saveUsers(users);
   if(ok){alrt.innerHTML='<span style="color:var(--green)">تم التغيير ✓</span>';setTimeout(()=>toggleReset(),2000);}
-  else{alrt.innerHTML='<span style="color:var(--red)">خطأ — تحقق من الإنترنت</span>';}
+  else{alrt.innerHTML='<span style="color:var(--red)">خطأ في الاتصال</span>';}
 }
 
-// ═══════════════════════════════════════════════
-// CREW FUNCTIONS
-// ═══════════════════════════════════════════════
-let selCat='all';
-let selAssets=new Set();
-
-function showCrew(id){
-  document.querySelectorAll('.cscr').forEach(s=>s.classList.remove('act'));
-  document.getElementById(id).classList.add('act');
-}
-
+// ── CREW ──
+function showCrew(id){document.querySelectorAll('.cscr').forEach(s=>s.classList.remove('act'));document.getElementById(id).classList.add('act');}
 async function goCrew(id){
   showCrew(id);
-  if(id==='cs-take'){selCat='all';selAssets=new Set();await renderTakeCats();document.getElementById('t-out').value=now();}
+  if(id==='cs-take'){selCat='all';selAssets=new Set();document.getElementById('t-out').value=now();await renderTakeCats();}
   if(id==='cs-return') await renderReturnList();
   if(id==='cs-main') await renderCrewMain();
   if(id==='cs-hist') await renderMyHist();
+  if(id==='cs-note') await loadNoteAssets();
 }
 
 async function renderCrewMain(){
+  const av=document.getElementById('crew-av-main');
+  if(CU.photo){av.innerHTML=`<img src="${CU.photo}" style="width:100%;height:100%;object-fit:cover">`;}
+  else{av.textContent=CU.name[0];}
+  document.getElementById('crew-name').textContent=CU.name;
+  document.getElementById('crew-title').textContent=CU.title||'';
   const cos=await getCheckouts();
   const active=cos.filter(c=>!c.returned&&c.uid===CU.id);
   const el=document.getElementById('my-active');
   if(!active.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">لا توجد معدات خارجة</div>';return;}
-  const g={};active.forEach(c=>{if(!g[c.gid]){g[c.gid]={proj:c.project,exp:c.dateExp,items:[]};}g[c.gid].items.push(c.assetName);});
+  const g={};active.forEach(c=>{if(!g[c.gid]){g[c.gid]={proj:c.project,exp:c.dateExp,items:[]};} g[c.gid].items.push(c.assetName);});
   el.innerHTML=Object.values(g).map(x=>`<div style="padding:9px 0;border-bottom:1px solid var(--border)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div><div style="font-weight:600;font-size:13px">${x.proj}</div>
@@ -699,37 +760,28 @@ async function renderCrewMain(){
 
 async function renderTakeCats(){
   const assets=await getAssets();
-  const avail=assets.filter(a=>a.status==='available');
+  const avail=assets.filter(a=>a.status==='available'&&a.fieldUse!==false);
   const usedCats=['all',...FIELD_CATS.filter(c=>avail.some(a=>a.cat===c))];
   document.getElementById('take-cats').innerHTML=usedCats.map(c=>
-    `<button class="cpill${c===selCat?' on':''}" onclick="setTakeCat('${c}')">${CAT_AR[c]||c}</button>`).join('');
+    `<button class="cpill${c===selCat?' on':''}" onclick="setTakeCat('${c}',event)">${CAT_AR[c]||c}</button>`).join('');
   await renderTakeList(assets);
 }
-
-async function renderTakeList(assets){
-  if(!assets) assets=await getAssets();
-  const avail=assets.filter(a=>a.status==='available'&&(selCat==='all'||a.cat===selCat));
-  const el=document.getElementById('take-list');
-  el.innerHTML=avail.length?avail.map(a=>`
-    <div class="aitem${selAssets.has(a.code)?' sel':''}" id="ai-${a.code}" onclick="toggleA('${a.code}')">
-      <div class="aitem-dot"></div>
-      <div>
-        <div class="aitem-name">${a.name}</div>
-        <div class="aitem-sub">${a.code}</div>
-      </div>
-    </div>`).join(''):'<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">لا توجد معدات متاحة</div>';
-}
-
-async function setTakeCat(c){
+async function setTakeCat(c,e){
   selCat=c;
   document.querySelectorAll('.cpill').forEach(b=>b.classList.toggle('on',b.textContent===(CAT_AR[c]||c)));
   await renderTakeList();
 }
-
-function toggleA(code){
-  selAssets.has(code)?selAssets.delete(code):selAssets.add(code);
-  document.getElementById('ai-'+code)?.classList.toggle('sel',selAssets.has(code));
+async function renderTakeList(assets){
+  if(!assets) assets=await getAssets();
+  const avail=assets.filter(a=>a.status==='available'&&a.fieldUse!==false&&(selCat==='all'||a.cat===selCat));
+  const el=document.getElementById('take-list');
+  el.innerHTML=avail.length?avail.map(a=>`
+    <div class="aitem${selAssets.has(a.code)?' sel':''}" id="ai-${a.code}" onclick="toggleA('${a.code}')">
+      <div class="aitem-dot"></div>
+      <div><div class="aitem-name">${a.name}</div><div class="aitem-sub">${a.code} · ${CAT_AR[a.cat]||a.cat}</div></div>
+    </div>`).join(''):'<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">لا توجد معدات متاحة</div>';
 }
+function toggleA(code){selAssets.has(code)?selAssets.delete(code):selAssets.add(code);document.getElementById('ai-'+code)?.classList.toggle('sel',selAssets.has(code));}
 
 async function doTake(){
   const proj=document.getElementById('t-proj').value.trim();
@@ -748,17 +800,10 @@ async function doTake(){
     a.status='out';
     cos.push({gid,code,assetName:a.name,assetCat:a.cat,uid:CU.id,userName:CU.name,userTitle:CU.title||'',project:proj,dateOut:dOut,dateExp:dExp,notes,returned:false});
   });
-  const ok1=await saveAssets(assets);
-  const ok2=await saveCheckouts(cos);
+  const ok1=await saveAssets(assets);const ok2=await saveCheckouts(cos);
   btn.disabled=false;btn.textContent='تسجيل الخروج';
-  if(ok1&&ok2){
-    setSyncDot('green');
-    alrt.innerHTML=`<div class="calert ok">تم تسجيل خروج ${selAssets.size} معدة ✓</div>`;
-    selAssets=new Set();
-    setTimeout(()=>goCrew('cs-main'),1200);
-  } else {
-    alrt.innerHTML='<div class="calert err">خطأ في الحفظ — تحقق من الإنترنت</div>';
-  }
+  if(ok1&&ok2){setSyncDot('green');alrt.innerHTML=`<div class="calert ok">تم تسجيل خروج ${selAssets.size} معدة ✓</div>`;selAssets=new Set();setTimeout(()=>goCrew('cs-main'),1200);}
+  else{alrt.innerHTML='<div class="calert err">خطأ — تحقق من الإنترنت</div>';}
 }
 
 async function renderReturnList(){
@@ -766,24 +811,25 @@ async function renderReturnList(){
   const active=cos.filter(c=>!c.returned&&c.uid===CU.id);
   const el=document.getElementById('ret-list');
   if(!active.length){el.innerHTML='<div class="ccard"><div style="text-align:center;padding:24px;color:var(--muted)">لا توجد معدات لإرجاعها</div></div>';return;}
-  const g={};active.forEach(c=>{if(!g[c.gid]){g[c.gid]={proj:c.project,dOut:c.dateOut,dExp:c.dateExp,items:[]};}g[c.gid].items.push(c);});
+  const g={};active.forEach(c=>{if(!g[c.gid]){g[c.gid]={proj:c.project,dOut:c.dateOut,dExp:c.dateExp,items:[]};} g[c.gid].items.push(c);});
   el.innerHTML=Object.entries(g).map(([gid,x])=>`
     <div class="ri-card">
       <div class="ri-top">
         <div><div class="ri-proj">${x.proj}</div><div class="ri-meta">خرج: ${fmt(x.dOut)} · متوقع: ${fmt(x.dExp)}</div></div>
         ${isLate(x.dExp)?'<span class="late-pill">متأخر</span>':''}
       </div>
-      ${x.items.map(i=>`<div class="ri-row"><span style="flex:1;font-weight:600;font-size:13px">${i.assetName}</span>
+      ${x.items.map(i=>`<div class="ri-row">
+        <span style="flex:1;font-weight:600;font-size:13px">${i.assetName}</span>
         <label style="font-size:11px;color:var(--muted)">ساعات:</label>
-        <input type="number" class="hrs-i" min="0" step="0.5" id="rh-${i.code}-${gid}" placeholder="0"></div>`).join('')}
+        <input type="number" class="hrs-i" min="0" step="0.5" id="rh-${i.code}-${gid}" placeholder="0">
+      </div>`).join('')}
       <div class="cf" style="margin-top:10px"><label>ملاحظات الإرجاع</label><input type="text" id="rn-${gid}" placeholder="حالة المعدات..."></div>
       <button class="csub" onclick="doReturn('${gid}')">تأكيد الإرجاع</button>
     </div>`).join('');
 }
 
 async function doReturn(gid){
-  const cos=await getCheckouts();
-  const items=cos.filter(c=>c.gid===gid&&!c.returned);
+  const cos=await getCheckouts();const items=cos.filter(c=>c.gid===gid&&!c.returned);
   const assets=await getAssets();const logs=await getLogs();
   const rn=document.getElementById(`rn-${gid}`)?.value||'';
   let totalDep=0;
@@ -791,28 +837,21 @@ async function doReturn(gid){
     const hrs=parseFloat(document.getElementById(`rh-${item.code}-${gid}`)?.value)||0;
     const a=assets.find(x=>x.code===item.code);
     if(a){a.status='available';a.usedH=+(a.usedH+hrs).toFixed(1);}
-    const dep=+(depR(a||{cost:0,lifeH:1})*hrs).toFixed(3);totalDep+=dep;
+    const depPerH=a?(a.cost*(a.depRate||0.2))/(a.lifeH||5000):0;
+    const dep=+(depPerH*hrs).toFixed(3);totalDep+=dep;
     logs.push({date:new Date().toISOString(),code:item.code,name:item.assetName,cat:item.assetCat,
       uid:CU.id,userName:CU.name,userTitle:CU.title||'',project:item.project,
       dateOut:item.dateOut,dateIn:now(),hours:hrs,dep,notes:rn});
     const ci=cos.find(c=>c.gid===gid&&c.code===item.code);if(ci)ci.returned=true;
   });
-  const ok1=await saveAssets(assets);
-  const ok2=await saveCheckouts(cos);
-  const ok3=await saveLogs(logs);
-  if(ok1&&ok2&&ok3){
-    setSyncDot('green');
-    document.getElementById('ret-alert').innerHTML=`<div class="calert ok">تم الإرجاع ✓  استهلاك: ${totalDep.toFixed(3)} ر</div>`;
-    setTimeout(()=>renderReturnList(),400);
-  } else {
-    document.getElementById('ret-alert').innerHTML='<div class="calert err">خطأ في الحفظ — تحقق من الإنترنت</div>';
-  }
+  const ok1=await saveAssets(assets);const ok2=await saveCheckouts(cos);const ok3=await saveLogs(logs);
+  if(ok1&&ok2&&ok3){setSyncDot('green');document.getElementById('ret-alert').innerHTML=`<div class="calert ok">تم الإرجاع ✓ استهلاك: ${totalDep.toFixed(3)} ر</div>`;setTimeout(()=>renderReturnList(),400);}
+  else{document.getElementById('ret-alert').innerHTML='<div class="calert err">خطأ في الاتصال</div>';}
 }
 
 async function renderMyHist(){
   const logs=(await getLogs()).filter(l=>l.uid===CU.id).sort((a,b)=>b.date.localeCompare(a.date));
-  const tH=logs.reduce((s,l)=>s+l.hours,0);
-  const tD=logs.reduce((s,l)=>s+l.dep,0);
+  const tH=logs.reduce((s,l)=>s+l.hours,0);const tD=logs.reduce((s,l)=>s+l.dep,0);
   const pr=new Set(logs.map(l=>l.project)).size;
   document.getElementById('mh-stats').innerHTML=`
     <div style="text-align:center;background:var(--lb);border-radius:10px;padding:12px"><div style="font-size:20px;font-weight:700;color:var(--blue)">${logs.length}</div><div style="font-size:11px;color:var(--soft)">استخدامات</div></div>
@@ -822,114 +861,262 @@ async function renderMyHist(){
     <div style="padding:9px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div><div style="font-weight:600;font-size:13px">${l.name}</div>
-        <div style="font-size:11px;color:var(--soft);margin-top:1px">${l.project}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:1px">${fmt(l.dateOut)} → ${fmt(l.dateIn)}</div></div>
-        <div style="text-align:left"><div style="font-weight:700;font-size:13px">${l.hours}س</div>
-        <div style="font-size:11px;color:var(--amber)">${l.dep.toFixed(3)}ر</div></div>
+        <div style="font-size:11px;color:var(--soft)">${l.project}</div>
+        <div style="font-size:10px;color:var(--muted)">${fmt(l.dateOut)} → ${fmt(l.dateIn)}</div></div>
+        <div style="text-align:left"><div style="font-weight:700">${l.hours}س</div><div style="font-size:11px;color:var(--amber)">${l.dep.toFixed(3)}ر</div></div>
       </div></div>`).join(''):'<div class="empty">لا يوجد سجل</div>';
 }
 
-// ═══════════════════════════════════════════════
-// ACCOUNTANT DASHBOARD
-// ═══════════════════════════════════════════════
-async function renderDash(){
-  const [assets,logs,cos,users]=await Promise.all([getAssets(),getLogs(),getCheckouts(),getUsers()]);
+// ── NOTE ──
+async function loadNoteAssets(){
+  const assets=await getAssets();
+  const sel=document.getElementById('note-asset');
+  sel.innerHTML='<option value="">ملاحظة عامة</option>';
+  assets.filter(a=>a.fieldUse!==false).forEach(a=>{const o=new Option(a.name,a.code);sel.add(o);});
+}
+async function doSubmitNote(){
+  const assetCode=document.getElementById('note-asset').value;
+  const type=document.getElementById('note-type').value;
+  const text=document.getElementById('note-text').value.trim();
+  const alrt=document.getElementById('note-alert');
+  if(!text){alrt.innerHTML='<div class="calert err">اكتب الملاحظة أولاً</div>';return;}
+  const notes=await getNotes();
+  const assets=await getAssets();
+  const assetName=assetCode?(assets.find(a=>a.code===assetCode)?.name||''):null;
+  notes.push({id:'N'+Date.now(),date:new Date().toISOString(),uid:CU.id,userName:CU.name,
+    assetCode,assetName,type,text,read:false});
+  const ok=await saveNotes(notes);
+  if(ok){setSyncDot('green');alrt.innerHTML='<div class="calert ok">تم إرسال الملاحظة ✓</div>';
+    document.getElementById('note-text').value='';setTimeout(()=>goCrew('cs-main'),1200);}
+  else{alrt.innerHTML='<div class="calert err">خطأ في الاتصال</div>';}
+}
+
+// ── SUGGEST ──
+function previewSuggestImg(input){
+  if(!input.files||!input.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{const img=document.getElementById('sg-img-preview');img.src=e.target.result;img.style.display='block';};
+  r.readAsDataURL(input.files[0]);
+}
+async function doSubmitSuggest(){
+  const name=document.getElementById('sg-name').value.trim();
+  const cat=document.getElementById('sg-cat').value;
+  const purpose=document.getElementById('sg-purpose').value.trim();
+  const value=document.getElementById('sg-value').value.trim();
+  const price=parseFloat(document.getElementById('sg-price').value)||0;
+  const alrt=document.getElementById('suggest-alert');
+  if(!name||!purpose){alrt.innerHTML='<div class="calert err">يرجى تعبئة الاسم والغرض</div>';return;}
+  const imgEl=document.getElementById('sg-img-preview');
+  const imgData=imgEl.style.display!=='none'?imgEl.src:'';
+  const suggests=await getSuggests();
+  suggests.push({id:'SG'+Date.now(),date:new Date().toISOString(),uid:CU.id,userName:CU.name,
+    name,cat,purpose,value,price,imgData,read:false});
+  const ok=await saveSuggests(suggests);
+  if(ok){setSyncDot('green');alrt.innerHTML='<div class="calert ok">تم إرسال الاقتراح ✓</div>';
+    document.getElementById('sg-name').value='';document.getElementById('sg-purpose').value='';
+    document.getElementById('sg-value').value='';document.getElementById('sg-price').value='';
+    document.getElementById('sg-img-preview').style.display='none';
+    setTimeout(()=>goCrew('cs-main'),1200);}
+  else{alrt.innerHTML='<div class="calert err">خطأ في الاتصال</div>';}
+}
+
+// ── ACCOUNTANT ──
+function showPage(btn,pid){
+  document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('act'));btn.classList.add('act');
+  document.querySelectorAll('.apg').forEach(p=>p.classList.remove('act'));document.getElementById(pid).classList.add('act');
+  renderAcc();
+}
+
+async function renderAcc(){
+  const [assets,logs,cos,users,notes,suggests]=await Promise.all([
+    getAssets(),getLogs(),getCheckouts(),getUsers(),getNotes(),getSuggests()
+  ]);
   setSyncDot('green');
+
   const thisM=new Date().getMonth();const thisY=new Date().getFullYear();
   const mLog=logs.filter(l=>{const d=new Date(l.date);return d.getMonth()===thisM&&d.getFullYear()===thisY;});
   const mHrs=mLog.reduce((s,l)=>s+l.hours,0);
   const mDep=mLog.reduce((s,l)=>s+l.dep,0);
   const out=assets.filter(a=>a.status==='out').length;
+
   document.getElementById('ds-out').textContent=out;
   document.getElementById('ds-av').textContent=assets.filter(a=>a.status==='available').length;
   document.getElementById('ds-hrs').textContent=mHrs.toFixed(1);
-  document.getElementById('ds-dep').textContent=mDep.toFixed(2);
-  document.getElementById('asset-count-lbl').textContent=assets.length+' أصل مسجَّل';
+  document.getElementById('ds-dep').textContent=TOTAL_MONTHLY_DEP.toFixed(2);
+
+  // Badges
+  const unreadNotes=notes.filter(n=>!n.read).length;
+  const unreadSuggests=suggests.filter(s=>!s.read).length;
+  const nb=document.getElementById('notes-badge');
+  const sb=document.getElementById('suggest-badge');
+  if(nb){nb.textContent=unreadNotes;nb.style.display=unreadNotes?'inline':'none';}
+  if(sb){sb.textContent=unreadSuggests;sb.style.display=unreadSuggests?'inline':'none';}
 
   // Late alert
   const lates=cos.filter(c=>!c.returned&&isLate(c.dateExp));
   document.getElementById('dash-late').innerHTML=lates.length?
     `<div style="background:var(--la);border:1px solid var(--amber);color:var(--amber);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:600;margin-bottom:16px">⚠ متأخر: ${[...new Set(lates.map(c=>c.assetName))].slice(0,4).join('، ')}</div>`:'';
 
-  // Dashboard active
+  // Dashboard active snap
   const active=cos.filter(c=>!c.returned);
-  const g={};active.forEach(c=>{if(!g[c.gid]){g[c.gid]={name:c.userName,proj:c.project,exp:c.dateExp,items:[]};}g[c.gid].items.push(c.assetName);});
+  const g={};active.forEach(c=>{if(!g[c.gid]){g[c.gid]={name:c.userName,proj:c.project,exp:c.dateExp,items:[]};} g[c.gid].items.push(c.assetName);});
   document.getElementById('d-snap').innerHTML=Object.values(g).length?Object.values(g).map(x=>`
     <div style="padding:7px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div><span style="font-weight:600;font-size:12px">${x.name}</span>
         <div style="font-size:11px;color:var(--soft)">${x.proj}</div>
-        <div style="font-size:10px;color:var(--muted)">${x.items.slice(0,3).join(' · ')}${x.items.length>3?' +':''}
-        </div></div>${isLate(x.exp)?'<span class="badge b-late">متأخر</span>':'<span class="badge b-out">خارج</span>'}
+        <div style="font-size:10px;color:var(--muted)">${x.items.slice(0,3).join(' · ')}${x.items.length>3?` +${x.items.length-3}`:''}</div></div>
+        ${isLate(x.exp)?'<span class="badge b-late">متأخر</span>':'<span class="badge b-out">خارج</span>'}
       </div></div>`).join(''):'<div class="empty">لا توجد أصول خارجة</div>';
 
-  // Top bars
+  // Top usage bars
   const byA={};mLog.forEach(l=>{if(!byA[l.name])byA[l.name]=0;byA[l.name]+=l.hours;});
   const topA=Object.entries(byA).sort((a,b)=>b[1]-a[1]).slice(0,6);const mxA=topA[0]?.[1]||1;
   document.getElementById('d-top').innerHTML=topA.length?topA.map(([n,h])=>`
     <div class="bar-row"><div class="bar-lbl">${n}</div><div class="bar-trk"><div class="bar-fill" style="width:${Math.round(h/mxA*100)}%"></div></div><div class="bar-val">${h.toFixed(1)}س</div></div>`).join(''):'<div class="empty" style="padding:16px">لا بيانات</div>';
 
   // Recent
-  const recent=logs.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  const recent=[...logs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
   document.getElementById('d-recent').innerHTML=recent.length?recent.map(l=>`
     <div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
       <div style="display:flex;justify-content:space-between"><div><span style="font-weight:600">${l.name}</span> · ${l.userName}</div><span style="color:var(--amber);font-weight:600">${l.dep.toFixed(2)}ر</span></div>
       <div style="font-size:11px;color:var(--muted)">${l.project} · ${fmt(l.dateIn)}</div></div>`).join(''):'<div class="empty" style="padding:16px">لا بيانات</div>';
 
-  // Prod bars
+  // Prod bars dash
   const byU={};mLog.forEach(l=>{if(!byU[l.userName])byU[l.userName]={hrs:0,pr:new Set()};byU[l.userName].hrs+=l.hours;byU[l.userName].pr.add(l.project);});
   const uA=Object.entries(byU).sort((a,b)=>b[1].hrs-a[1].hrs);const mxU=uA[0]?.[1].hrs||1;
-  document.getElementById('d-prod').innerHTML=uA.length?uA.map(([n,v])=>`
+  document.getElementById('d-prod-dash').innerHTML=uA.length?uA.map(([n,v])=>`
     <div class="bar-row"><div class="bar-lbl">${n}</div><div class="bar-trk"><div class="bar-fill" style="width:${Math.round(v.hrs/mxU*100)}%"></div></div><div class="bar-val">${v.hrs.toFixed(1)}س</div></div>`).join(''):'<div class="empty" style="padding:16px">لا بيانات</div>';
 
   // Active table
   document.getElementById('active-tbl').innerHTML=active.length?active.map(c=>`<tr>
-    <td style="font-weight:600">${c.assetName}</td><td><span class="badge b-cat">${c.assetCat||''}</span></td>
+    <td style="font-weight:600">${c.assetName}</td><td><span class="badge b-cat">${CAT_AR[c.assetCat]||c.assetCat||''}</span></td>
     <td>${c.userName}</td><td style="font-size:11px">${c.project}</td>
     <td style="font-size:11px">${fmt(c.dateOut)}</td><td style="font-size:11px">${fmt(c.dateExp)}</td>
     <td>${isLate(c.dateExp)?'<span class="badge b-late">متأخر</span>':'<span class="badge b-out">خارج</span>'}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">لا توجد أصول خارجة</td></tr>';
 
-  // Log filter selects
-  const uSel=document.getElementById('lu2');
-  if(uSel.options.length<=1){users.filter(u=>u.role==='crew').forEach(u=>{const o=new Option(u.name,u.id);uSel.add(o);});}
-  const cSel=document.getElementById('lcat');
-  if(cSel.options.length<=1){ALL_CATS.forEach(c=>{cSel.add(new Option(c,c));});}
-  const afSel=document.getElementById('af-cat');
-  if(afSel.options.length<=1){ALL_CATS.forEach(c=>{afSel.add(new Option(c,c));});}
+  // Notes
+  const nf=document.getElementById('note-filter-type')?.value||'';
+  const filteredNotes=nf?notes.filter(n=>n.type===nf):notes;
+  const sortedNotes=[...filteredNotes].sort((a,b)=>b.date.localeCompare(a.date));
+  const typeLabels={general:'عامة',damage:'تلف',missing:'مفقود',maintenance:'صيانة',other:'أخرى'};
+  const typeColors={damage:'var(--red)',missing:'var(--amber)',maintenance:'var(--blue)',general:'var(--soft)',other:'var(--soft)'};
+  document.getElementById('notes-list').innerHTML=sortedNotes.length?sortedNotes.map(n=>`
+    <div class="note-card${!n.read?' unread':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <span style="font-weight:700;font-size:13px">${n.userName}</span>
+          ${n.assetName?`<span style="font-size:12px;color:var(--soft);margin-right:6px">على: ${n.assetName}</span>`:'<span style="font-size:12px;color:var(--soft);margin-right:6px">ملاحظة عامة</span>'}
+          <span class="badge" style="background:var(--lb);color:${typeColors[n.type]||'var(--soft)'}">${typeLabels[n.type]||n.type}</span>
+          ${!n.read?'<span class="badge" style="background:var(--lr);color:var(--red);margin-right:4px">جديد</span>':''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:var(--muted)">${fmt(n.date)}</span>
+          ${!n.read?`<button onclick="markNoteRead('${n.id}')" style="border:none;background:var(--lg);color:var(--green);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:11px">تم القراءة</button>`:''}
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text);line-height:1.6">${n.text}</div>
+    </div>`).join(''):'<div class="empty">لا توجد ملاحظات</div>';
+
+  // Suggests
+  const sortedSuggests=[...suggests].sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('suggests-list').innerHTML=sortedSuggests.length?sortedSuggests.map(s=>`
+    <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;border-right:4px solid var(--purple)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-weight:700;font-size:15px">${s.name}</div>
+          <div style="font-size:12px;color:var(--soft);margin-top:2px">${s.userName} · ${fmt(s.date)}</div>
+          <span class="badge b-cat">${CAT_AR[s.cat]||s.cat}</span>
+          ${!s.read?'<span class="badge b-new" style="margin-right:4px">جديد</span>':''}
+        </div>
+        <div style="text-align:left">
+          ${s.price?`<div style="font-size:16px;font-weight:700;color:var(--purple)">${s.price} ر</div>`:''}
+          ${!s.read?`<button onclick="markSuggestRead('${s.id}')" style="border:none;background:var(--lp);color:var(--purple);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:11px;margin-top:4px">تم القراءة</button>`:''}
+        </div>
+      </div>
+      <div style="margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:var(--soft)">الغرض: </span><span style="font-size:13px">${s.purpose}</span></div>
+      ${s.value?`<div style="margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:var(--soft)">القيمة المضافة: </span><span style="font-size:13px">${s.value}</span></div>`:''}
+      ${s.imgData?`<img src="${s.imgData}" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid var(--border);margin-top:8px">`:''}
+    </div>`).join(''):'<div class="empty">لا توجد اقتراحات</div>';
+
+  // Log filters
+  const uSel=document.getElementById('lu2');if(uSel&&uSel.options.length<=1){users.filter(u=>u.role==='crew').forEach(u=>{uSel.add(new Option(u.name,u.id));});}
+  const cSel=document.getElementById('lcat');if(cSel&&cSel.options.length<=1){ALL_CATS.forEach(c=>{cSel.add(new Option(CAT_AR[c]||c,c));});}
+  const afSel=document.getElementById('af-cat');if(afSel&&afSel.options.length<=1){ALL_CATS.forEach(c=>{afSel.add(new Option(CAT_AR[c]||c,c));});}
+  const dfSel=document.getElementById('dep-fcat');if(dfSel&&dfSel.options.length<=1){ALL_CATS.forEach(c=>{dfSel.add(new Option(CAT_AR[c]||c,c));});}
 
   // Log table
   const q=(document.getElementById('lq')?.value||'').toLowerCase();
   const fu=document.getElementById('lu2')?.value||'';
   const fc=document.getElementById('lcat')?.value||'';
   const fm=document.getElementById('lmon')?.value||'';
-  const fl=logs.filter(l=>{
-    return(!fm||(l.dateOut||'').startsWith(fm))&&(!fu||l.uid===fu)&&(!fc||l.cat===fc)&&
-      (!q||l.name.toLowerCase().includes(q)||l.userName.toLowerCase().includes(q)||l.project.toLowerCase().includes(q));
-  }).sort((a,b)=>b.date.localeCompare(a.date));
+  const fl=[...logs].filter(l=>(!fm||(l.dateOut||'').startsWith(fm))&&(!fu||l.uid===fu)&&(!fc||l.cat===fc)&&
+    (!q||l.name.toLowerCase().includes(q)||l.userName.toLowerCase().includes(q)||l.project.toLowerCase().includes(q)))
+    .sort((a,b)=>b.date.localeCompare(a.date));
   document.getElementById('log-tbl').innerHTML=fl.length?fl.map(l=>`<tr>
-    <td style="font-weight:600">${l.name}</td><td><span class="badge b-cat">${l.cat||''}</span></td>
+    <td style="font-weight:600">${l.name}</td><td><span class="badge b-cat">${CAT_AR[l.cat]||l.cat||''}</span></td>
     <td>${l.userName}</td><td style="font-size:11px">${l.project}</td>
     <td style="font-size:11px">${fmt(l.dateOut)}</td><td style="font-size:11px">${fmt(l.dateIn)}</td>
     <td style="font-weight:600">${l.hours}س</td><td style="font-weight:600;color:var(--amber)">${l.dep.toFixed(3)}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">لا توجد سجلات</td></tr>';
 
-  // Dep bars
-  const byAD={};logs.forEach(l=>{if(!byAD[l.name])byAD[l.name]=0;byAD[l.name]+=l.dep;});
-  const topD=Object.entries(byAD).sort((a,b)=>b[1]-a[1]).slice(0,8);const mxD=topD[0]?.[1]||1;
-  document.getElementById('dep-bars').innerHTML=topD.length?topD.map(([n,d])=>`
-    <div class="bar-row"><div class="bar-lbl">${n}</div><div class="bar-trk"><div class="bar-fill" style="width:${Math.round(d/mxD*100)}%"></div></div><div class="bar-val">${d.toFixed(2)}ر</div></div>`).join(''):'<div class="empty" style="padding:16px">لا بيانات</div>';
-  const byCD={};logs.forEach(l=>{if(!byCD[l.cat])byCD[l.cat]=0;byCD[l.cat]+=l.dep;});
-  const catD=Object.entries(byCD).sort((a,b)=>b[1]-a[1]);const mxCD=catD[0]?.[1]||1;
-  document.getElementById('dep-cat-bars').innerHTML=catD.length?catD.map(([c,d])=>`
-    <div class="bar-row"><div class="bar-lbl">${c}</div><div class="bar-trk"><div class="bar-fill" style="width:${Math.round(d/mxCD*100)}%"></div></div><div class="bar-val">${d.toFixed(2)}ر</div></div>`).join(''):'<div class="empty" style="padding:16px">لا بيانات</div>';
-  document.getElementById('dep-tbl').innerHTML=assets.map(a=>{
-    const pct=a.lifeH>0&&a.lifeH<9999?Math.min(Math.round(a.usedH/a.lifeH*100),100):0;
-    const dep=+(depR(a)*a.usedH).toFixed(3);const col=pct>75?'var(--red)':pct>50?'var(--amber)':'var(--green)';
-    return`<tr><td style="font-weight:600">${a.name}</td><td><span class="badge b-cat">${a.cat}</span></td>
-    <td>${a.cost.toFixed(2)}</td><td>${a.usedH.toFixed(1)}</td>
-    <td><div style="display:flex;align-items:center;gap:6px"><div class="prog"><div class="progf" style="width:${pct}%;background:${col}"></div></div><span style="font-size:11px;color:${col};font-weight:700">${pct}%</span></div></td>
-    <td style="font-weight:600;color:var(--amber)">${dep}</td><td style="color:var(--green);font-weight:600">${(a.cost-dep).toFixed(3)}</td></tr>`;}).join('');
+  // Depreciation - fixed monthly per category
+  const byCatDep={};
+  assets.forEach(a=>{
+    if(!byCatDep[a.cat])byCatDep[a.cat]=0;
+    byCatDep[a.cat]+=(a.monthlyDep||0);
+  });
+  const catDepArr=Object.entries(byCatDep).sort((a,b)=>b[1]-a[1]);
+  const mxCD=catDepArr[0]?.[1]||1;
+  document.getElementById('dep-cat-bars').innerHTML=catDepArr.map(([c,d])=>`
+    <div class="bar-row"><div class="bar-lbl">${CAT_AR[c]||c}</div><div class="bar-trk"><div class="bar-fill" style="width:${Math.round(d/mxCD*100)}%"></div></div><div class="bar-val">${d.toFixed(1)}ر</div></div>`).join('');
 
-  // Prod table
+  // Usage-based dep bars
+  const byAUD={};logs.forEach(l=>{if(!byAUD[l.name])byAUD[l.name]=0;byAUD[l.name]+=l.dep;});
+  const topUD=Object.entries(byAUD).sort((a,b)=>b[1]-a[1]).slice(0,8);const mxUD=topUD[0]?.[1]||1;
+  document.getElementById('dep-usage-bars').innerHTML=topUD.length?topUD.map(([n,d])=>`
+    <div class="bar-row"><div class="bar-lbl">${n}</div><div class="bar-trk"><div class="bar-fill" style="width:${Math.round(d/mxUD*100)}%"></div></div><div class="bar-val">${d.toFixed(2)}ر</div></div>`).join(''):'<div class="empty" style="padding:16px">لا بيانات</div>';
+
+  // Dep detail table
+  const depFC=document.getElementById('dep-fcat')?.value||'';
+  document.getElementById('dep-tbl').innerHTML=assets.filter(a=>!depFC||a.cat===depFC).map(a=>{
+    const pct=a.lifeH>0&&a.lifeH<9999?Math.min(Math.round(a.usedH/a.lifeH*100),100):0;
+    const usageDep=+(((a.cost*(a.depRate||0.2))/(a.lifeH||5000))*a.usedH).toFixed(3);
+    const col=pct>75?'var(--red)':pct>50?'var(--amber)':'var(--green)';
+    return`<tr><td style="font-weight:600;font-size:11px">${a.name}</td>
+    <td><span class="badge b-cat" style="font-size:9px">${CAT_AR[a.cat]||a.cat}</span></td>
+    <td>${a.cost.toFixed(2)}</td>
+    <td>${((a.depRate||0)*100).toFixed(0)}%</td>
+    <td style="color:var(--amber);font-weight:600">${(a.annualDep||0).toFixed(2)}</td>
+    <td style="color:var(--amber);font-weight:700">${(a.monthlyDep||0).toFixed(3)}</td>
+    <td>${a.usedH.toFixed(1)}س</td>
+    <td><div style="display:flex;align-items:center;gap:6px"><div class="prog"><div class="progf" style="width:${pct}%;background:${col}"></div></div><span style="font-size:10px;color:${col};font-weight:700">${pct}%</span></div></td>
+    <td style="color:var(--green);font-weight:600">${(a.cost-usageDep).toFixed(3)}</td></tr>`;}).join('');
+
+  // Monthly report
+  const mrSel=document.getElementById('mr-month');
+  if(mrSel){
+    const months=new Set(logs.map(l=>(l.dateOut||'').slice(0,7)).filter(Boolean));
+    if(mrSel.options.length<=1)[...months].sort().reverse().forEach(m=>mrSel.add(new Option(m,m)));
+    const selM=mrSel.value;
+    document.getElementById('mr-fixed').textContent=TOTAL_MONTHLY_DEP.toFixed(2);
+    document.getElementById('mr-entry-amount').textContent=TOTAL_MONTHLY_DEP.toFixed(2);
+    if(selM){
+      const mL=logs.filter(l=>(l.dateOut||'').startsWith(selM));
+      document.getElementById('mr-usage').textContent=mL.reduce((s,l)=>s+l.dep,0).toFixed(3);
+      document.getElementById('mr-ops').textContent=mL.length;
+      document.getElementById('mr-tbl').innerHTML=assets.map(a=>{
+        const usageDep=+(((a.cost*(a.depRate||0.2))/(a.lifeH||5000))*a.usedH).toFixed(3);
+        return`<tr><td style="font-weight:600;font-size:11px">${a.name}</td>
+        <td><span class="badge b-cat" style="font-size:9px">${CAT_AR[a.cat]||a.cat}</span></td>
+        <td>${a.cost.toFixed(2)}</td>
+        <td>${((a.depRate||0)*100).toFixed(0)}%</td>
+        <td style="font-weight:700;color:var(--amber)">${(a.monthlyDep||0).toFixed(3)}</td>
+        <td style="color:var(--red)">${usageDep}</td>
+        <td style="color:var(--green);font-weight:600">${(a.cost-usageDep).toFixed(3)}</td></tr>`;}).join('');
+    }
+  }
+
+  // Productivity
   const byUP={};
   logs.forEach(l=>{
     if(!byUP[l.uid])byUP[l.uid]={name:l.userName,title:l.userTitle||'',hrs:0,pr:new Set(),dep:0,last:'',freq:{}};
@@ -947,47 +1134,31 @@ async function renderDash(){
     const top=Object.entries(u.freq).sort((a,b)=>b[1]-a[1])[0];
     return`<tr><td style="font-weight:600">${u.name}</td><td style="color:var(--soft)">${u.title}</td>
     <td>${u.pr.size}</td><td style="font-weight:600">${u.hrs.toFixed(1)}س</td>
-    <td style="font-size:11px">${u.last?fmt(u.last):'—'}</td>
+    <td style="font-size:11px">${u.last?fmtD(u.last):'—'}</td>
     <td style="font-size:11px">${top?top[0]:'—'}</td>
     <td style="font-weight:600;color:var(--amber)">${u.dep.toFixed(3)}</td></tr>`;}).join(''):'<tr><td colspan="7" class="empty">لا بيانات</td></tr>';
 
-  // Monthly report
-  const mrSel=document.getElementById('mr-month');
-  const months=new Set(logs.map(l=>(l.dateOut||'').slice(0,7)).filter(Boolean));
-  if(mrSel.options.length<=1)[...months].sort().reverse().forEach(m=>{mrSel.add(new Option(m,m));});
-  const selM=mrSel.value;
-  if(selM){
-    const mL=logs.filter(l=>(l.dateOut||'').startsWith(selM));
-    document.getElementById('mr-dep').textContent=mL.reduce((s,l)=>s+l.dep,0).toFixed(3);
-    document.getElementById('mr-hrs').textContent=mL.reduce((s,l)=>s+l.hours,0).toFixed(1);
-    document.getElementById('mr-ops').textContent=mL.length;
-    const byCode={};mL.forEach(l=>{if(!byCode[l.code])byCode[l.code]={name:l.name,cat:l.cat,hrs:0,dep:0};byCode[l.code].hrs+=l.hours;byCode[l.code].dep+=l.dep;});
-    document.getElementById('mr-tbl').innerHTML=Object.entries(byCode).sort((a,b)=>b[1].dep-a[1].dep).map(([code,v])=>{
-      const a=assets.find(x=>x.code===code)||{cost:0,usedH:0};
-      const totalDep2=+(depR(a)*a.usedH).toFixed(3);
-      return`<tr><td style="font-weight:600">${v.name}</td><td><span class="badge b-cat">${v.cat}</span></td>
-      <td>${a.cost.toFixed(2)}</td><td>${v.hrs.toFixed(1)}</td>
-      <td style="font-weight:700;color:var(--amber)">${v.dep.toFixed(3)}</td>
-      <td style="color:var(--red)">${totalDep2}</td>
-      <td style="color:var(--green);font-weight:600">${(a.cost-totalDep2).toFixed(3)}</td></tr>`;}).join('');
-  }
-
   // Assets table
   const afFC=document.getElementById('af-cat')?.value||'';
+  document.getElementById('asset-count-lbl').textContent=assets.length+' أصل مسجَّل';
   document.getElementById('assets-tbl').innerHTML=assets.filter(a=>!afFC||a.cat===afFC).map(a=>{
     const pct=a.lifeH>0&&a.lifeH<9999?Math.min(Math.round(a.usedH/a.lifeH*100),100):0;
     const col=pct>75?'var(--red)':pct>50?'var(--amber)':'var(--green)';
     return`<tr><td style="font-size:10px;color:var(--muted)">${a.code}</td>
     <td style="font-weight:600;font-size:12px">${a.name}</td>
-    <td><span class="badge b-cat" style="font-size:9px">${a.cat}</span></td>
-    <td>${a.cost.toFixed(2)}</td><td>${a.usedH.toFixed(1)}</td>
-    <td><div style="display:flex;align-items:center;gap:6px"><div class="prog"><div class="progf" style="width:${pct}%;background:${col}"></div></div><span style="font-size:10px;color:${col};font-weight:700">${pct}%</span></div></td>
+    <td><span class="badge b-cat" style="font-size:9px">${CAT_AR[a.cat]||a.cat}</span></td>
+    <td>${a.cost.toFixed(2)}</td>
+    <td>${((a.depRate||0)*100).toFixed(0)}%</td>
+    <td style="font-weight:600;color:var(--amber)">${(a.monthlyDep||0).toFixed(3)}</td>
+    <td>${a.usedH.toFixed(1)}</td>
     <td><span class="badge ${a.status==='out'?'b-out':'b-in'}">${a.status==='out'?'خارج':'متاح'}</span></td></tr>`;}).join('');
 
   // Users list
   document.getElementById('users-list').innerHTML=users.map(u=>`
     <div class="ucard" style="${u.disabled?'opacity:.5':''}">
-      <div class="uav" style="background:${u.role==='accountant'?'var(--lp)':'var(--lb)'};color:${u.role==='accountant'?'#7C3AED':'var(--blue)'}">${u.name[0]}</div>
+      <div class="uav" style="background:${u.role==='accountant'?'var(--lp)':'var(--lb)'};color:${u.role==='accountant'?'#7C3AED':'var(--blue)'}">
+        ${u.photo?`<img src="${u.photo}">`:`<span>${u.name[0]}</span>`}
+      </div>
       <div style="flex:1">
         <div style="font-weight:600;font-size:14px">${u.name}${u.disabled?' <span class="badge b-late">موقوف</span>':''}</div>
         <div style="font-size:12px;color:var(--soft)">${u.title||''} · @${u.username}</div>
@@ -1001,15 +1172,12 @@ async function renderDash(){
     </div>`).join('');
 }
 
-function showPage(btn,pid){
-  document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('act'));btn.classList.add('act');
-  document.querySelectorAll('.apg').forEach(p=>p.classList.remove('act'));document.getElementById(pid).classList.add('act');
-  renderDash();
-}
+// ── NOTES MANAGEMENT ──
+async function markNoteRead(id){const notes=await getNotes();const n=notes.find(x=>x.id===id);if(n){n.read=true;await saveNotes(notes);await renderAcc();}}
+async function markAllNotesRead(){const notes=await getNotes();notes.forEach(n=>n.read=true);await saveNotes(notes);await renderAcc();}
+async function markSuggestRead(id){const s=await getSuggests();const n=s.find(x=>x.id===id);if(n){n.read=true;await saveSuggests(s);await renderAcc();}}
 
-// ═══════════════════════════════════════════════
-// USER MANAGEMENT
-// ═══════════════════════════════════════════════
+// ── USER MANAGEMENT ──
 async function doAddUser(){
   const name=document.getElementById('nu-name').value.trim();
   const username=document.getElementById('nu-user').value.trim().toLowerCase();
@@ -1021,18 +1189,11 @@ async function doAddUser(){
   alrt.innerHTML='<span style="color:var(--amber)">جاري الحفظ في Firebase...</span>';
   const users=await getUsers();
   if(users.find(u=>u.username===username)){alrt.innerHTML='<span style="color:var(--red)">اسم المستخدم موجود</span>';return;}
-  users.push({id:'u'+Date.now(),name,username,password:pass,role,title});
+  users.push({id:'u'+Date.now(),name,username,password:pass,role,title,photo:''});
   const ok=await saveUsers(users);
-  if(ok){
-    setSyncDot('green');
-    alrt.innerHTML='<span style="color:var(--green)">تم إضافة المستخدم وحفظه في Firebase ✓</span>';
-    ['nu-name','nu-user','nu-pass','nu-title'].forEach(id=>document.getElementById(id).value='');
-    await renderDash();
-  } else {
-    alrt.innerHTML='<span style="color:var(--red)">خطأ في الاتصال بـ Firebase</span>';
-  }
+  if(ok){setSyncDot('green');alrt.innerHTML='<span style="color:var(--green)">تم الإضافة وحفظه في Firebase ✓</span>';['nu-name','nu-user','nu-pass','nu-title'].forEach(id=>document.getElementById(id).value='');await renderAcc();}
+  else{alrt.innerHTML='<span style="color:var(--red)">خطأ في الاتصال بـ Firebase</span>';}
 }
-
 async function doChangePass(){
   const old=document.getElementById('cp-old').value;
   const np=document.getElementById('cp-new').value;
@@ -1041,152 +1202,120 @@ async function doChangePass(){
   if(!old||!np||!cp){alrt.innerHTML='<span style="color:var(--red)">تعبئة جميع الحقول</span>';return;}
   if(np!==cp){alrt.innerHTML='<span style="color:var(--red)">غير متطابقة</span>';return;}
   if(np.length<4){alrt.innerHTML='<span style="color:var(--red)">قصيرة جداً</span>';return;}
-  const users=await getUsers();
-  const me=users.find(u=>u.id===CU.id);
+  const users=await getUsers();const me=users.find(u=>u.id===CU.id);
   if(!me||me.password!==old){alrt.innerHTML='<span style="color:var(--red)">كلمة المرور الحالية غير صحيحة</span>';return;}
   me.password=np;CU.password=np;
   const ok=await saveUsers(users);
   if(ok){alrt.innerHTML='<span style="color:var(--green)">تم التغيير ✓</span>';['cp-old','cp-new','cp-conf'].forEach(id=>document.getElementById(id).value='');}
   else{alrt.innerHTML='<span style="color:var(--red)">خطأ في الاتصال</span>';}
 }
-
 async function doResetUserPass(id){
-  const np=prompt('كلمة المرور الجديدة للمستخدم:');
+  const np=prompt('كلمة المرور الجديدة:');
   if(!np||np.length<3){if(np!==null)alert('قصيرة جداً');return;}
-  const users=await getUsers();
-  const u=users.find(x=>x.id===id);
-  if(u){u.password=np;const ok=await saveUsers(users);if(ok){setSyncDot('green');alert('تم التغيير ✓');await renderDash();}}
+  const users=await getUsers();const u=users.find(x=>x.id===id);
+  if(u){u.password=np;const ok=await saveUsers(users);if(ok){setSyncDot('green');alert('تم ✓');await renderAcc();}}
 }
-
 async function doToggleUser(id){
-  const users=await getUsers();
-  const u=users.find(x=>x.id===id);if(!u)return;
-  u.disabled=!u.disabled;
-  const ok=await saveUsers(users);if(ok){setSyncDot('green');await renderDash();}
+  const users=await getUsers();const u=users.find(x=>x.id===id);if(!u)return;
+  u.disabled=!u.disabled;const ok=await saveUsers(users);if(ok){setSyncDot('green');await renderAcc();}
 }
-
 async function doDelUser(id){
   if(!confirm('حذف هذا المستخدم؟'))return;
-  const users=await getUsers();
-  const ok=await saveUsers(users.filter(u=>u.id!==id));
-  if(ok){setSyncDot('green');await renderDash();}
+  const users=await getUsers();const ok=await saveUsers(users.filter(u=>u.id!==id));
+  if(ok){setSyncDot('green');await renderAcc();}
 }
 
-// ═══════════════════════════════════════════════
-// ASSET MANAGEMENT
-// ═══════════════════════════════════════════════
+// ── ASSET MANAGEMENT ──
 function toggleAddAsset(){document.getElementById('add-asset-form').classList.toggle('open');}
-
 async function doAddAsset(){
   const code=document.getElementById('na-code').value.trim();
   const name=document.getElementById('na-name').value.trim();
   const alrt=document.getElementById('add-asset-alert');
   if(!code||!name){alrt.innerHTML='<span style="color:var(--red)">تعبئة الكود والاسم</span>';return;}
+  const rate=parseFloat(document.getElementById('na-rate').value||'20')/100;
+  const cost=parseFloat(document.getElementById('na-cost').value)||0;
+  const cat=document.getElementById('na-cat').value;
+  const lifeY=1/rate;
+  const annualDep=+(cost*rate).toFixed(3);
+  const monthlyDep=+(annualDep/12).toFixed(4);
   alrt.innerHTML='<span style="color:var(--amber)">جاري الحفظ...</span>';
   const assets=await getAssets();
-  assets.push({code,name,cat:document.getElementById('na-cat').value,
-    cost:parseFloat(document.getElementById('na-cost').value)||0,
-    lifeH:parseFloat(document.getElementById('na-life').value)||2000,
-    usedH:0,status:'available'});
+  assets.push({code,name,cat,cost,lifeYears:+lifeY.toFixed(1),depRate:rate,annualDep,monthlyDep,usedH:0,lifeH:5000,status:'available',purchaseDate:'',fieldUse:true});
   const ok=await saveAssets(assets);
-  if(ok){
-    alrt.innerHTML='<span style="color:var(--green)">تم الحفظ ✓</span>';
-    ['na-code','na-name','na-cost','na-life'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('add-asset-form').classList.remove('open');
-    await renderDash();
-  } else {
-    alrt.innerHTML='<span style="color:var(--red)">خطأ في الاتصال</span>';
-  }
+  if(ok){alrt.innerHTML='<span style="color:var(--green)">تم الحفظ ✓</span>';['na-code','na-name','na-cost','na-rate'].forEach(id=>document.getElementById(id).value='');document.getElementById('add-asset-form').classList.remove('open');await renderAcc();}
+  else{alrt.innerHTML='<span style="color:var(--red)">خطأ في الاتصال</span>';}
 }
 
-// ═══════════════════════════════════════════════
-// DATA MANAGEMENT
-// ═══════════════════════════════════════════════
+// ── DATA MANAGEMENT ──
 async function previewDel(){
   const type=document.getElementById('del-type').value;
   const filter=document.getElementById('del-filter').value.trim().toLowerCase();
-  const data=type==='log'?await getLogs():await getCheckouts();
-  const toDel=filter?data.filter(r=>(r.userName||'').toLowerCase().includes(filter)||(r.project||'').toLowerCase().includes(filter)):data;
+  let data=[];
+  if(type==='log')data=await getLogs();
+  else if(type==='checkouts')data=await getCheckouts();
+  else if(type==='notes')data=await getNotes();
+  else if(type==='suggests')data=await getSuggests();
+  const toDel=filter?data.filter(r=>(r.userName||'').toLowerCase().includes(filter)||(r.project||'').toLowerCase().includes(filter)||(r.name||'').toLowerCase().includes(filter)):data;
   document.getElementById('del-preview').innerHTML=`<span style="color:var(--amber);font-weight:600">سيتم حذف ${toDel.length} سجل من أصل ${data.length}</span>`;
 }
-
 async function doDel(){
   const type=document.getElementById('del-type').value;
   const filter=document.getElementById('del-filter').value.trim().toLowerCase();
-  const data=type==='log'?await getLogs():await getCheckouts();
-  const remaining=filter?data.filter(r=>!(r.userName||'').toLowerCase().includes(filter)&&!(r.project||'').toLowerCase().includes(filter)):[];
+  let data=[];
+  if(type==='log')data=await getLogs();
+  else if(type==='checkouts')data=await getCheckouts();
+  else if(type==='notes')data=await getNotes();
+  else if(type==='suggests')data=await getSuggests();
+  const remaining=filter?data.filter(r=>!(r.userName||'').toLowerCase().includes(filter)&&!(r.project||'').toLowerCase().includes(filter)&&!(r.name||'').toLowerCase().includes(filter)):[];
   if(!confirm(`حذف ${data.length-remaining.length} سجل؟`))return;
-  const ok=type==='log'?await saveLogs(remaining):await saveCheckouts(remaining);
-  if(ok){setSyncDot('green');document.getElementById('del-preview').innerHTML='<span style="color:var(--green)">تم الحذف ✓</span>';await renderDash();}
+  let ok=false;
+  if(type==='log')ok=await saveLogs(remaining);
+  else if(type==='checkouts')ok=await saveCheckouts(remaining);
+  else if(type==='notes')ok=await saveNotes(remaining);
+  else if(type==='suggests')ok=await saveSuggests(remaining);
+  if(ok){setSyncDot('green');document.getElementById('del-preview').innerHTML='<span style="color:var(--green)">تم الحذف ✓</span>';await renderAcc();}
 }
-
 async function clearAll(type){
   if(!confirm('سيتم مسح البيانات. هل أنت متأكد؟'))return;
   if(type==='all'){
     await saveLogs([]);await saveCheckouts([]);
-    const assets=await getAssets();assets.forEach(a=>{a.usedH=0;a.status='available';});
-    await saveAssets(assets);
-  } else if(type==='log'){
-    await saveLogs([]);
-  } else {
-    await saveCheckouts([]);
-    const assets=await getAssets();assets.forEach(a=>a.status='available');await saveAssets(assets);
-  }
-  setSyncDot('green');await renderDash();
+    const assets=await getAssets();assets.forEach(a=>{a.usedH=0;a.status='available';});await saveAssets(assets);
+  }else if(type==='log'){await saveLogs([]);}
+  else{await saveCheckouts([]);const assets=await getAssets();assets.forEach(a=>a.status='available');await saveAssets(assets);}
+  setSyncDot('green');await renderAcc();
 }
 
-// ═══════════════════════════════════════════════
-// EXPORT
-// ═══════════════════════════════════════════════
+// ── EXPORT ──
 async function exportCSV(){
   const logs=await getLogs();
   const header="Asset,Code,Category,User,Project,DateOut,DateIn,Hours,Depreciation";
   const rows=logs.map(l=>[l.name,l.code,l.cat||'',l.userName,l.project,l.dateOut,l.dateIn,l.hours,l.dep.toFixed(3)].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));
-  const csv=[header,...rows].join('\n');
-  const b=new Blob(['\uFEFF'+csv],{type:'text/csv'});
+  const b=new Blob(['\uFEFF'+[header,...rows].join('\n')],{type:'text/csv'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='FOOTAGE_log.csv';a.click();
 }
-
 async function exportMonthly(){
   const selM=document.getElementById('mr-month').value;
   if(!selM){alert('اختر الشهر أولاً');return;}
-  const logs=(await getLogs()).filter(l=>(l.dateOut||'').startsWith(selM));
-  const header="Asset,Code,Category,User,Project,DateOut,DateIn,Hours,Depreciation";
-  const rows=logs.map(l=>[l.name,l.code,l.cat||'',l.userName,l.project,l.dateOut,l.dateIn,l.hours,l.dep.toFixed(3)].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));
-  const csv=[header,...rows].join('\n');
-  const b=new Blob(['\uFEFF'+csv],{type:'text/csv'});
+  const assets=await getAssets();
+  const header="Asset,Code,Category,CostOMR,DepRate,AnnualDepOMR,MonthlyDepOMR";
+  const rows=assets.map(a=>[a.name,a.code,a.cat,a.cost.toFixed(2),((a.depRate||0)*100).toFixed(0)+'%',(a.annualDep||0).toFixed(3),(a.monthlyDep||0).toFixed(4)].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));
+  const b=new Blob(['\uFEFF'+[header,...rows].join('\n')],{type:'text/csv'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='FOOTAGE_monthly_'+selM+'.csv';a.click();
 }
 
-// ═══════════════════════════════════════════════
-// POLLING
-// ═══════════════════════════════════════════════
-function startPolling(){
-  setInterval(async()=>{
-    if(!CU||CU.role!=='accountant')return;
-    await renderDash();
-    setSyncDot('green');
-  },20000);
-}
+// ── POLLING ──
+function startPolling(){setInterval(async()=>{if(!CU||CU.role!=='accountant')return;await renderAcc();setSyncDot('green');},20000);}
 
-// Initialize Firebase with default data if empty
-async function initFirebase(){
-  const users=await fbRead('users');
-  if(!users||!Array.isArray(users)||users.length===0){
-    await fbWrite('users',DEFAULT_USERS);
-  }
-  const assets=await fbRead('assets');
-  if(!assets||!Array.isArray(assets)||assets.length===0){
-    await fbWrite('assets',INIT_ASSETS);
-  }
-  const cos=await fbRead('checkouts');
-  if(!cos){await fbWrite('checkouts',[]);}
-  const logs=await fbRead('log');
-  if(!logs){await fbWrite('log',[]);}
+// ── INIT ──
+async function init(){
+  const users=await fbRead('users');if(!users||!Array.isArray(users)||users.length===0){await fbWrite('users',DEFAULT_USERS);}
+  const assets=await fbRead('assets');if(!assets||!Array.isArray(assets)||assets.length===0){await fbWrite('assets',INIT_ASSETS);}
+  if(!await fbRead('checkouts')){await fbWrite('checkouts',[]);}
+  if(!await fbRead('log')){await fbWrite('log',[]);}
+  if(!await fbRead('notes')){await fbWrite('notes',[]);}
+  if(!await fbRead('suggests')){await fbWrite('suggests',[]);}
 }
-
-// Start
-initFirebase();
+init();
 </script>
 </body>
 </html>
